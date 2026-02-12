@@ -7,13 +7,13 @@
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" data-bs-toggle="collapse" href="{{ route('kategori') }}" aria-expanded="false" aria-controls="tables">
+              <a class="nav-link" data-bs-toggle="collapse" href="{{ route('kategori.index') }}" aria-expanded="false" aria-controls="tables">
                 <span class="menu-title">Kategori</span>
                 <i class="mdi mdi-table-large menu-icon"></i>
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" data-bs-toggle="collapse" href="#tables" aria-expanded="false" aria-controls="tables">
+              <a class="nav-link" data-bs-toggle="collapse" href="{{ route('buku.index')}}" aria-expanded="false" aria-controls="tables">
                 <span class="menu-title">Buku</span>
                 <i class="mdi mdi-table-large menu-icon"></i>
               </a>
