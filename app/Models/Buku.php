@@ -10,10 +10,11 @@ class Buku extends Model
 {
    protected $table = 'buku';
    public $timestamps = false;
+   protected $primaryKey = 'idbuku';
     protected $fillable = ['idkategori', 'kode', 'judul', 'pengarang'];
 
-    public function kategori(): BelongsTo
+    public function kategori()
     {
-        return $this->belongsTo(Kategori::class);
+        return $this->belongsTo(Kategori::class, 'idkategori', 'idkategori');
     }
 }

@@ -6,10 +6,10 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\KategoriController;
 use App\Http\Controllers\BukuController;
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
-// Route::get('/', function () {
-//     return view('pages.home');
-// })->middleware(['auth', 'verified','check.session'])->name('home');
+Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
+    ->name('logout');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -20,11 +20,19 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'verified','check.session'])->group(function () {
     Route::get('/', [PageController::class, 'homePage'])->name('home');
     Route::get('/kategori', [KategoriController::class, 'index'])->name('kategori.index');
-    Route::post('/kategori', [KategoriController::class, 'store'])->name('kategori.store');
-
-    // CRUD Buku
+    Route::get('/kategori/create', [KategoriController::class, 'create'])->name('kategori.create');
+    Route::post('/kategori/store', [KategoriController::class, 'store'])->name('kategori.store');
+    Route::get('/kategori/edit/{id}', [KategoriController::class, 'edit'])->name('kategori.edit');
+    Route::put('/kategori/update/{id}', [KategoriController::class, 'update'])->name('kategori.update');
+    Route::delete('/kategori/destroy/{id}', [KategoriController::class, 'destroy'])->name('kategori.destroy');
+    
+    
     Route::get('/buku', [BukuController::class, 'index'])->name('buku.index');
-    Route::post('/buku', [BukuController::class, 'store'])->name('buku.store');
+    Route::get('/buku/create', [BukuController::class, 'create'])->name('buku.create');
+    Route::post('/buku/store', [BukuController::class, 'store'])->name('buku.store');
+    Route::get('/buku/edit/{id}', [BukuController::class, 'edit'])->name('buku.edit');
+    Route::put('/buku/update/{id}', [BukuController::class, 'update'])->name('buku.update');
+    Route::delete('/buku/destroy/{id}', [BukuController::class, 'destroy'])->name('buku.destroy');
 });
 
 require __DIR__.'/auth.php';
