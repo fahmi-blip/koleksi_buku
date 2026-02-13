@@ -9,7 +9,7 @@
     </li>
 
     {{-- Menu Kategori --}}
-    <li class="nav-item {{ Request::is('kategori') ? 'active' : '' }}">
+    <li class="nav-item {{ Request::is('kategori*') ? 'active' : '' }}">
       <a class="nav-link" href="{{ route('kategori.index') }}">
         <span class="menu-title">Kategori</span>
         <i class="mdi mdi-table-large menu-icon"></i>
@@ -17,7 +17,7 @@
     </li>
 
     {{-- Menu Buku --}}
-    <li class="nav-item {{ Request::is('buku') ? 'active' : '' }}">
+    <li class="nav-item {{ Request::is('buku*') ? 'active' : '' }}">
       <a class="nav-link" href="{{ route('buku.index') }}">
         <span class="menu-title">Buku</span>
         <i class="mdi mdi-book-open-variant menu-icon"></i>
