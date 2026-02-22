@@ -67,6 +67,23 @@
                                 <div class="mt-4 text-center font-weight-light">
                                     Belum punya akun? <a href="{{ route('register') }}" class="text-primary">Buat Akun</a>
                                 </div>
+
+                                <div class="mt-4">
+                                    <div class="mb-3 d-flex align-items-center">
+                                        <hr class="flex-grow-1">
+                                        <span class="mx-2 text-muted">atau</span>
+                                        <hr class="flex-grow-1">
+                                    </div>
+                                    <a href="{{ route('auth.google') }}" class="btn btn-block btn-danger btn-lg font-weight-medium">
+                                        <i class="mr-2 mdi mdi-google"></i> Login dengan Google
+                                    </a>
+                                </div>
+
+                                @if (session('error'))
+                                    <div class="mt-3 alert alert-danger">
+                                        {{ session('error') }}
+                                    </div>
+                                @endif
                             </form>
                         </div>
                     </div>

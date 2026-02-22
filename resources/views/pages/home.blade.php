@@ -1,7 +1,6 @@
 @extends('layouts.main')
 
 @section('content')
-    {{-- Langsung masukkan kontennya tanpa pembungkus main-panel lagi --}}
     <div class="page-header">
       <h3 class="page-title">
         <span class="text-white page-title-icon bg-gradient-primary me-2">
