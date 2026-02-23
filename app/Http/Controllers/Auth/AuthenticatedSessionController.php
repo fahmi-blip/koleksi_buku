@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\User;
+use App\Mail\OtpMail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Session;
 
@@ -27,16 +31,19 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
-        $request->session()->regenerate();
-        $user = Auth::user();
-        session(['user_session_data'=>[
-            'id'=>$user->id,
-            'name'=>$user->name,
-            'email'=>$user->email,
-            'login_at'=> now(),
-            ]]);
+        $user = User::where('email', $request->email)->first();
 
-        return redirect()->intended(route('home', absolute: false));
+        // Generate OTP
+        $otp = strtoupper(Str::random(6));
+        $user->update(['otp' => $otp]);
+
+        // Send Email
+        Mail::to($user->email)->send(new OtpMail($otp));
+
+        // Store user ID in session for OTP verification
+        session(['pending_otp_user_id' => $user->id]);
+
+        return redirect()->route('otp.verify');
     }
 
     /**

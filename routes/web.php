@@ -8,6 +8,8 @@ use App\Http\Controllers\BukuController;
 use App\Http\Controllers\Auth\GoogleController;
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\PdfGenerator;
+
 
 Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
     ->name('logout');
@@ -37,6 +39,9 @@ Route::middleware(['auth', 'verified','check.session'])->group(function () {
     Route::get('/buku/edit/{id}', [BukuController::class, 'edit'])->name('buku.edit');
     Route::put('/buku/update/{id}', [BukuController::class, 'update'])->name('buku.update');
     Route::delete('/buku/destroy/{id}', [BukuController::class, 'destroy'])->name('buku.destroy');
+
+    Route::get('/dokumen/sertifikat', [PdfGenerator::class, 'cetakSertifikat'])->name('sertifikat');
+    Route::get('/dokumen/pengumuman', [PdfGenerator::class, 'cetakPengumuman'])->name('pengumuman');
 });
 
 require __DIR__.'/auth.php';

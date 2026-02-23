@@ -23,5 +23,18 @@
         <i class="mdi mdi-book-open-variant menu-icon"></i>
       </a>
     </li>
+
+    <li class="nav-item {{ Request::is('dokumen/sertifikat*') ? 'active' : '' }}">
+      <a class="nav-link" href="{{ route('sertifikat') }}" target="_blank">
+        <span class="menu-title">Sertifikat (PDF)</span>
+        <i class="mdi mdi-certificate menu-icon"></i>
+      </a>
+    </li>
+    <li class="nav-item {{ Request::is('dokumen/surat*') ? 'active' : '' }}">
+      <a class="nav-link" href="{{ route('pengumuman') }}" target="_blank">
+        <span class="menu-title">Surat Resmi (PDF)</span>
+        <i class="mdi mdi-certificate menu-icon"></i>
+      </a>
+    </li>
   </ul>
 </nav>
