@@ -3,13 +3,11 @@
         {{ __('Kami telah mengirimkan kode OTP ke email Anda. Silakan masukkan kode tersebut di bawah ini untuk melanjutkan login.') }}
     </div>
 
-    <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
     <form method="POST" action="{{ route('otp.verify.post') }}">
         @csrf
 
-        <!-- OTP -->
         <div>
             <x-input-label for="otp" :value="__('Kode OTP')" />
             <x-text-input id="otp" class="block w-full mt-1 text-2xl tracking-widest text-center" type="text" name="otp" required autofocus autocomplete="off" maxlength="6" placeholder="XXXXXX" />

@@ -7,18 +7,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class PdfGenerator extends Controller
 {
-    // A. Generate Sertifikat (Landscape)
-    public function cetakSertifikat()
-    {
-        $data = ['nama' => 'Fahmi Syihaab', 'kegiatan' => 'Workshop Framework Laravel'];
-        
-        $pdf = Pdf::loadView('pages.sertifikat', $data)
-                  ->setPaper('a4', 'landscape');
-                  
-        return $pdf->stream('Sertifikat.pdf');
-    }
 
-    public function cetakPengumuman()
+    public function cetakLabel()
     {
         $data = ['nomor_surat' => '123/FAK/2026', 'tanggal' => '23 Februari 2026'];
         

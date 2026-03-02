@@ -6,6 +6,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\KategoriController;
 use App\Http\Controllers\BukuController;
 use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\BarangController;
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\PdfGenerator;
@@ -40,8 +41,17 @@ Route::middleware(['auth', 'verified','check.session'])->group(function () {
     Route::put('/buku/update/{id}', [BukuController::class, 'update'])->name('buku.update');
     Route::delete('/buku/destroy/{id}', [BukuController::class, 'destroy'])->name('buku.destroy');
 
-    Route::get('/dokumen/sertifikat', [PdfGenerator::class, 'cetakSertifikat'])->name('sertifikat');
-    Route::get('/dokumen/pengumuman', [PdfGenerator::class, 'cetakPengumuman'])->name('pengumuman');
+   Route::get('/dokumen/pengumuman', [PdfGenerator::class, 'cetakLabel'])->name('pengumuman');
+
+    // Barang & Cetak Label TnJ 108
+    Route::get('/barang', [BarangController::class, 'index'])->name('barang.index');
+    Route::get('/barang/create', [BarangController::class, 'create'])->name('barang.create');
+    Route::post('/barang/store', [BarangController::class, 'store'])->name('barang.store');
+    Route::get('/barang/edit/{id}', [BarangController::class, 'edit'])->name('barang.edit');
+    Route::put('/barang/update/{id}', [BarangController::class, 'update'])->name('barang.update');
+    Route::delete('/barang/destroy/{id}', [BarangController::class, 'destroy'])->name('barang.destroy');
+    Route::post('/barang/cetak', [BarangController::class, 'formCetak'])->name('barang.formCetak');
+    Route::post('/barang/cetak/pdf', [BarangController::class, 'cetakPdf'])->name('barang.cetakPdf');
 });
 
 require __DIR__.'/auth.php';

@@ -25,7 +25,7 @@
 
     <div class="content">
         <p style="text-align: right">Tanggal: {{ $tanggal }}</p>
-        <p>Nomor: {{ $nomor_surat }}<br>Perihal: <b>Pengumuman Kegiatan Akademik</b></p>
+        <p>Nomor: {{ $nomor_surat }}<br>Perihal: <b>Pengumuman Kegiatan Akademik 2</b></p>
         
         <p>Dengan hormat,</p>
         <p>Bersama surat ini kami mengumumkan kepada seluruh mahasiswa dan jajaran staf akademik bahwa akan diadakan perbaikan sistem secara menyeluruh pada pekan depan. Diharapkan seluruh civitas akademika dapat menyesuaikan jadwal kegiatan belajar mengajar.</p>
