@@ -19,4 +19,5 @@
     <link rel="stylesheet" href="{{ asset('assets/css/style.css')}}">
     <!-- End layout styles -->
     <link rel="shortcut icon" href="assets/images/favicon.png" />
+    @stack('styles')
   </head>

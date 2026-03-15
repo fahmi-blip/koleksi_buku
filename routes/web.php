@@ -52,6 +52,10 @@ Route::middleware(['auth', 'verified','check.session'])->group(function () {
     Route::delete('/barang/destroy/{id}', [BarangController::class, 'destroy'])->name('barang.destroy');
     Route::post('/barang/cetak', [BarangController::class, 'formCetak'])->name('barang.formCetak');
     Route::post('/barang/cetak/pdf', [BarangController::class, 'cetakPdf'])->name('barang.cetakPdf');
+
+    Route::get('/latihan/table', [PageController::class, 'latihanTable'])->name('latihan.table');
+    Route::get('/latihan/datatables', [PageController::class, 'latihanDatatables'])->name('latihan.datatables');
+    Route::get('/latihan/select', [PageController::class, 'latihanSelect'])->name('latihan.select');
 });
 
 require __DIR__.'/auth.php';

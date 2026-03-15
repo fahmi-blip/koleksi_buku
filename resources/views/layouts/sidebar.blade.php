@@ -51,5 +51,23 @@
         <i class="mdi mdi-tag-multiple menu-icon"></i>
       </a>
     </li>
+    <li class="nav-item {{ Request::is('datatables*') ? 'active' : '' }}">
+      <a class="nav-link" href="{{ route('latihan.datatables') }}">
+        <span class="menu-title">Datatables</span>
+        <i class="mdi mdi-tag-multiple menu-icon"></i>
+      </a>
+    </li>
+    <li class="nav-item {{ Request::is('tables*') ? 'active' : '' }}">
+      <a class="nav-link" href="{{ route('latihan.table') }}">
+        <span class="menu-title">Table</span>
+        <i class="mdi mdi-tag-multiple menu-icon"></i>
+      </a>
+    </li>
+    <li class="nav-item {{ Request::is('select*') ? 'active' : '' }}">
+      <a class="nav-link" href="{{ route('latihan.select') }}">
+        <span class="menu-title">Select</span>
+        <i class="mdi mdi-tag-multiple menu-icon"></i>
+      </a>
+    </li>
   </ul>
 </nav>

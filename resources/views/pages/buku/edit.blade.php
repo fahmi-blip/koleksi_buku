@@ -11,7 +11,7 @@
         <div class="card">
             <div class="card-body">
                 <h4 class="card-title">Form Edit Buku: {{ $buku->judul }}</h4>
-                <form class="forms-sample" action="{{ route('buku.update', $buku->idbuku) }}" method="POST">
+                <form class="forms-sample" id="formEditBuku" action="{{ route('buku.update', $buku->idbuku) }}" method="POST">
                     @csrf
                     @method('PUT')
                     <div class="form-group">
@@ -41,9 +41,23 @@
                         <label>Pengarang</label>
                         <input type="text" name="pengarang" class="form-control" value="{{ old('pengarang', $buku->pengarang) }}" required>
                     </div>
-
-                    <button type="submit" class="btn btn-gradient-primary me-2">Update Buku</button>
                 </form>
+
+                <button type="button" id="btnUpdateBuku" class="btn btn-gradient-primary me-2" onclick="submitEditBuku()">Update Buku</button>
+
+                <script>
+                function submitEditBuku() {
+                    const form = document.getElementById('formEditBuku');
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        return;
+                    }
+                    const btn = document.getElementById('btnUpdateBuku');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
+                    form.submit();
+                }
+                </script>
             </div>
         </div>
     </div>

@@ -9,6 +9,19 @@ class PageController extends Controller
     {
         return view('pages.home');
     }
-    
 
+    public function latihanTable()
+    {
+        return view('pages.latihan.table');
+    }
+
+    public function latihanDatatables()
+    {
+        return view('pages.latihan.datatables');
+    }
+
+    public function latihanSelect()
+    {
+        return view('pages.latihan.select');
+    }
 }

@@ -11,7 +11,7 @@
         <div class="card">
             <div class="card-body">
                 <h4 class="card-title">Form Edit Barang</h4>
-                <form class="forms-sample" action="{{ route('barang.update', $barang->id_barang) }}" method="POST">
+                <form class="forms-sample" id="formEditBarang" action="{{ route('barang.update', $barang->id_barang) }}" method="POST">
                     @csrf
                     @method('PUT')
 
@@ -36,9 +36,24 @@
                         @error('harga') <small class="text-danger">{{ $message }}</small> @enderror
                     </div>
 
-                    <button type="submit" class="btn btn-gradient-primary me-2">Simpan Perubahan</button>
-                    <a href="{{ route('barang.index') }}" class="btn btn-light">Batal</a>
                 </form>
+
+                <button type="button" id="btnUpdateBarang" class="btn btn-gradient-primary me-2" onclick="submitEditBarang()">Simpan Perubahan</button>
+                <a href="{{ route('barang.index') }}" class="btn btn-light">Batal</a>
+
+                <script>
+                function submitEditBarang() {
+                    const form = document.getElementById('formEditBarang');
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        return;
+                    }
+                    const btn = document.getElementById('btnUpdateBarang');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
+                    form.submit();
+                }
+                </script>
             </div>
         </div>
     </div>

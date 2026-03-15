@@ -10,14 +10,29 @@
         <div class="card">
             <div class="card-body">
                 <h4 class="card-title">Tambah Kategori Baru</h4>
-                <form class="forms-sample" action="{{ route('kategori.store') }}" method="POST">
+                <form class="forms-sample" id="formKategori" action="{{ route('kategori.store') }}" method="POST">
                     @csrf
                     <div class="form-group">
                         <label for="namaKategori">Nama Kategori</label>
                         <input type="text" name="nama_kategori" class="form-control" id="namaKategori" placeholder="Contoh: Novel" required>
                     </div>
-                    <button type="submit" class="btn btn-gradient-primary me-2">Simpan</button>
                 </form>
+
+                <button type="button" id="btnSimpanKategori" class="btn btn-gradient-primary me-2" onclick="submitKategori()">Simpan</button>
+
+                <script>
+                function submitKategori() {
+                    const form = document.getElementById('formKategori');
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        return;
+                    }
+                    const btn = document.getElementById('btnSimpanKategori');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
+                    form.submit();
+                }
+                </script>
             </div>
         </div>
     </div>

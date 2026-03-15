@@ -12,7 +12,7 @@
             <div class="card-body">
                 <h4 class="card-title">Form Barang Baru</h4>
                 <p class="card-description">Masukkan detail barang dengan lengkap.</p>
-                <form class="forms-sample" action="{{ route('barang.store') }}" method="POST">
+                <form class="forms-sample" id="formBarang" action="{{ route('barang.store') }}" method="POST">
                     @csrf
                     <div class="form-group">
                         <label>ID Barang <small class="text-muted">(maks. 8 karakter)</small></label>
@@ -37,10 +37,24 @@
                                placeholder="0" value="{{ old('harga') }}" required min="0">
                         @error('harga') <small class="text-danger">{{ $message }}</small> @enderror
                     </div>
-
-                    <button type="submit" class="btn btn-gradient-primary me-2">Simpan</button>
-                    <button type="reset" class="btn btn-light">Reset</button>
                 </form>
+
+                <button type="button" id="btnSimpanBarang" class="btn btn-gradient-primary me-2" onclick="submitBarang()">Simpan</button>
+                <button type="reset" form="formBarang" class="btn btn-light">Reset</button>
+
+                <script>
+                function submitBarang() {
+                    const form = document.getElementById('formBarang');
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        return;
+                    }
+                    const btn = document.getElementById('btnSimpanBarang');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
+                    form.submit();
+                }
+                </script>
             </div>
         </div>
     </div>

@@ -9,48 +9,49 @@
         size: A4 portrait;
         margin: 10.65mm 10.65mm;
     }
-
+    
     * {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
     }
-
+    
     body {
         font-family: Arial, Helvetica, sans-serif;
         font-size: 7pt;
     }
-
+    
     .page-wrap {
         page-break-after: always;
     }
-
+    
     table.label-sheet {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 3mm 3mm;   
+        border-spacing: 2mm 2mm;   
         table-layout: fixed;
         margin: 0 auto;
     }
-
+    
     col.label-col { width: 38mm; }
-
+    
     table.label-sheet td {
         height: 18mm;           
         vertical-align: middle;
         text-align: center;
         overflow: hidden;
     }
-
-    table.label-sheet td.label-cell {
+    
+     /* table.label-sheet td.label-cell {
         border: 0.3pt solid #cccccc;
-        padding: 1mm 1mm;
+        border-radius: 1mm;
     }
-
-    table.label-sheet td.empty {
-        border: 0.3pt dashed #dddddd;
+    
+     table.label-sheet td.empty {
+        color: #333;
+        border: 0.3pt dashed #fffff;
         background: #fafafa;
-    }
+    }  */
 
     .label-id {
         font-size: 5.5pt;

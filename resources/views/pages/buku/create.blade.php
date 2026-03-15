@@ -12,7 +12,7 @@
             <div class="card-body">
                 <h4 class="card-title">Form Buku Baru</h4>
                 <p class="card-description"> Masukkan detail buku dengan lengkap. </p>
-                <form class="forms-sample" action="{{ route('buku.store') }}" method="POST">
+                <form class="forms-sample" id="formBuku" action="{{ route('buku.store') }}" method="POST">
                     @csrf
                     <div class="form-group">
                         <label>Kode Buku</label>
@@ -41,10 +41,24 @@
                         <label>Pengarang</label>
                         <input type="text" name="pengarang" class="form-control" placeholder="Nama Pengarang" value="{{ old('pengarang') }}" required>
                     </div>
-
-                    <button type="submit" class="btn btn-gradient-primary me-2">Simpan Buku</button>
-                    <button type="reset" class="btn btn-light">Reset</button>
                 </form>
+
+                <button type="button" id="btnSimpanBuku" class="btn btn-gradient-primary me-2" onclick="submitBuku()">Simpan Buku</button>
+                <button type="reset" form="formBuku" class="btn btn-light">Reset</button>
+
+                <script>
+                function submitBuku() {
+                    const form = document.getElementById('formBuku');
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        return;
+                    }
+                    const btn = document.getElementById('btnSimpanBuku');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
+                    form.submit();
+                }
+                </script>
             </div>
         </div>
     </div>
