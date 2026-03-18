@@ -44,6 +44,20 @@
       </a>
     </li>
 
+    {{-- Menu POS --}}
+    <li class="nav-item {{ Request::is('pos*') ? 'active' : '' }}">
+      <a class="nav-link" href="{{ route('pos.index') }}">
+        <span class="menu-title">Point of Sales</span>
+        <i class="mdi mdi-cash-register menu-icon"></i>
+      </a>
+    </li>
+    <li class="nav-item {{ Request::is('wilayah*') ? 'active' : '' }}">
+      <a class="nav-link" href="{{ route('wilayah') }}">
+        <span class="menu-title">Wilayah</span>
+        <i class="mdi mdi-cash-register menu-icon"></i>
+      </a>
+    </li>
+
     {{-- Menu Barang --}}
     <li class="nav-item {{ Request::is('barang*') ? 'active' : '' }}">
       <a class="nav-link" href="{{ route('barang.index') }}">

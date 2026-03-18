@@ -24,4 +24,8 @@ class PageController extends Controller
     {
         return view('pages.latihan.select');
     }
+    public function wilayah()
+    {
+        return view('pages.wilayah');
+    }
 }

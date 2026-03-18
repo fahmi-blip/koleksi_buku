@@ -12,4 +12,8 @@ class Barang extends Model
     protected $keyType = 'string';
     protected $fillable = ['id_barang', 'nama', 'harga'];
 
+    public function penjualanDetail()
+    {
+        return $this->hasMany(PenjualanDetail::class, 'id_barang', 'id_barang');
+    }
 }

@@ -7,6 +7,7 @@ use App\Http\Controllers\KategoriController;
 use App\Http\Controllers\BukuController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\BarangController;
+use App\Http\Controllers\PosController;
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\PdfGenerator;
@@ -56,6 +57,11 @@ Route::middleware(['auth', 'verified','check.session'])->group(function () {
     Route::get('/latihan/table', [PageController::class, 'latihanTable'])->name('latihan.table');
     Route::get('/latihan/datatables', [PageController::class, 'latihanDatatables'])->name('latihan.datatables');
     Route::get('/latihan/select', [PageController::class, 'latihanSelect'])->name('latihan.select');
+    Route::get('/wilayah', [PageController::class, 'wilayah'])->name('wilayah');
+
+    Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
+    Route::get('/pos/barang/{id}', [PosController::class, 'getBarang'])->name('pos.getBarang');
+    Route::post('/pos/store', [PosController::class, 'store'])->name('pos.store');
 });
 
 require __DIR__.'/auth.php';
