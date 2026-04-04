@@ -1,6 +1,7 @@
 @extends('layouts.main')
 
 @section('content')
+@push('styles')
 <div class="page-header">
     <h3 class="page-title">Latihan Form + HTML Table</h3>
 </div>

@@ -49,19 +49,19 @@
 				<h4 class="card-title">Ringkasan Pilihan</h4>
 				<div class="gap-2 d-flex flex-column">
 					<div>
-						<small class="text-muted d-block mb-2">Provinsi</small>
+						<small class="mb-2 text-muted d-block">Provinsi</small>
 						<span id="labelProvinsi" class="badge badge-outline-primary">-</span>
 					</div>
 					<div>
-						<small class="text-muted d-block mb-2">Kota/Kabupaten</small>
+						<small class="mb-2 text-muted d-block">Kota/Kabupaten</small>
 						<span id="labelKota" class="badge badge-outline-info">-</span>
 					</div>
 					<div>
-						<small class="text-muted d-block mb-2">Kecamatan</small>
+						<small class="mb-2 text-muted d-block">Kecamatan</small>
 						<span id="labelKecamatan" class="badge badge-outline-warning">-</span>
 					</div>
 					<div>
-						<small class="text-muted d-block mb-2">Kelurahan</small>
+						<small class="mb-2 text-muted d-block">Kelurahan</small>
 						<span id="labelKelurahan" class="badge badge-outline-success">-</span>
 					</div>
 				</div>

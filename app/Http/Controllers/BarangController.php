@@ -73,8 +73,8 @@ class BarangController extends Controller
         $request->validate([
             'ids'   => 'required|array|min:1',
             'ids.*' => 'exists:barang,id_barang',
-            'start_x' => 'required|integer|min:1|max:5',
-            'start_y' => 'required|integer|min:1|max:8',
+            'start_x' => 'required|integer|min:1|max:3',
+            'start_y' => 'required|integer|min:1|max:4',
         ]);
 
         $ids      = $request->input('ids');
@@ -93,17 +93,17 @@ class BarangController extends Controller
             }
         }
 
-        $startIndex = ($startY - 1) * 5 + ($startX - 1);
+        $startIndex = ($startY - 1) * 3 + ($startX - 1);
 
         $totalSlots = $startIndex + count($labels);
-        $totalPages = (int) ceil($totalSlots / 40);
+        $totalPages = (int) ceil($totalSlots / 12);
 
         $pages = [];
         $labelPointer = 0;
         for ($page = 0; $page < $totalPages; $page++) {
             $pageSlots = [];
             $offset    = $page === 0 ? $startIndex : 0;   
-            for ($slot = 0; $slot < 40; $slot++) {
+            for ($slot = 0; $slot < 12; $slot++) {
                 if ($page === 0 && $slot < $startIndex) {
                     $pageSlots[] = null;  
                 } else {

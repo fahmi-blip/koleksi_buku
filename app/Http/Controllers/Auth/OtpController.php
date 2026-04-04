@@ -35,7 +35,10 @@ class OtpController extends Controller
             return back()->withErrors(['otp' => 'Kode OTP tidak valid.']);
         }
 
-        $user->update(['otp' => null]);
+        /** @var User $user */
+
+        $user->otp = null;
+        $user->save();
 
         Auth::login($user);
 
@@ -50,6 +53,8 @@ class OtpController extends Controller
 
         session()->forget('pending_otp_user_id');
 
-        return redirect()->intended(route('home', absolute: false));
+        $defaultRoute = route('home', absolute: false);
+
+        return redirect()->intended($defaultRoute);
     }
 }

@@ -7,7 +7,7 @@
 
     @page {
         size: A4 portrait;
-        margin: 10.65mm 10.65mm;
+        margin: 4mm 3mm;
     }
     
     * {
@@ -17,7 +17,7 @@
     }
     
     body {
-        font-family: Arial, Helvetica, sans-serif;
+        font-family: Poppins, Helvetica, sans-serif;
         font-size: 7pt;
     }
     
@@ -28,21 +28,21 @@
     table.label-sheet {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 2mm 2mm;   
+        border-spacing: 4mm 2mm;   
         table-layout: fixed;
         margin: 0 auto;
     }
     
-    col.label-col { width: 38mm; }
+    col.label-col { width: 64mm; }
     
     table.label-sheet td {
-        height: 18mm;           
+        height: 32mm;           
         vertical-align: middle;
         text-align: center;
         overflow: hidden;
     }
     
-     /* table.label-sheet td.label-cell {
+     table.label-sheet td.label-cell {
         border: 0.3pt solid #cccccc;
         border-radius: 1mm;
     }
@@ -51,20 +51,20 @@
         color: #333;
         border: 0.3pt dashed #fffff;
         background: #fafafa;
-    }  */
+    } 
 
     .label-id {
-        font-size: 5.5pt;
-        color: #555;
-        letter-spacing: 0.5px;
+        font-size: 8pt;
+        color: #000;
+        font-weight: bold;
         margin-bottom: 1mm;
         text-transform: uppercase;
     }
 
     .label-name {
-        font-size: 7pt;
+        font-size: 8pt;
         font-weight: bold;
-        color: #222;
+        color: #000;
         margin-bottom: 1mm;
         line-height: 1.2;
         overflow: hidden;
@@ -91,23 +91,19 @@
 <div class="{{ !$loop->last ? 'page-wrap' : '' }}">
 <table class="label-sheet">
     <colgroup>
-        @for($c = 0; $c < 5; $c++)
+        @for($c = 0; $c < 3; $c++)
             <col class="label-col">
         @endfor
     </colgroup>
 
-    @for($r = 0; $r < 8; $r++)
+    @for($r = 0; $r < 4; $r++)
     <tr>
-        @for($c = 0; $c < 5; $c++)
-            @php $idx = $r * 5 + $c; $item = $slots[$idx] ?? null; @endphp
+        @for($c = 0; $c < 3; $c++)
+            @php $idx = $r * 3 + $c; $item = $slots[$idx] ?? null; @endphp
             @if($item)
             <td class="label-cell">
-                <div class="label-id">{{ $item->id_barang }}</div>
-                <div class="label-name">{{ $item->nama }}</div>
-                <div class="label-price">
-                    Rp {{ number_format($item->harga, 0, ',', '.') }}
-                    <span class="label-price-label">HARGA</span>
-                </div>
+                <div class="label-id">Feri Kurniawan, S. H.</div>
+                <div class="label-name">Batuan</div>
             </td>
             @else
             <td class="label-cell empty"></td>
