@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class PemesananController extends Controller
 {
@@ -149,6 +150,14 @@ class PemesananController extends Controller
 
         $snapToken = null;
         $paymentMethod = $pesanan->metode_bayar;
+        $qrCodeSvg = null;
+
+        if ((int) $pesanan->status_bayar === 1) {
+            $qrCodeSvg = QrCode::format('svg')
+                ->size(180)
+                ->margin(1)
+                ->generate((string) $pesanan->idpesanan);
+        }
 
         if ($paymentMethod === 'midtrans' && config('midtrans.server_key')) {
             try {
@@ -159,8 +168,7 @@ class PemesananController extends Controller
                 $snapToken = null;
             }
         }
-
-        return view('pages.kantin.payment', compact('pesanan', 'snapToken', 'paymentMethod'));
+        return view('pages.kantin.payment', compact('pesanan', 'snapToken', 'paymentMethod', 'qrCodeSvg'));
     }
 
     public function confirmPayment(Request $request, Pesanan $pesanan)

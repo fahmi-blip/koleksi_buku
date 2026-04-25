@@ -295,6 +295,7 @@
 				<div>
 					<label class="field-label" for="vendorSelect">Vendor penyedia</label>
 					<select id="vendorSelect" class="field-control">
+						<option value="">-- Pilih vendor --</option>
 						@foreach ($vendorsData as $vendor)
 							<option value="{{ $vendor['idvendor'] }}">{{ $vendor['nama_vendor'] }}</option>
 						@endforeach
@@ -423,18 +424,28 @@
 			menuSelect.innerHTML = '';
 
 			if (!vendor) {
-				menuSelect.innerHTML = '<option value="">Tidak ada vendor</option>';
+				menuSelect.innerHTML = '<option value="">-- Pilih vendor terlebih dahulu --</option>';
+				menuSelect.disabled = true;
+				vendorNameDisplay.textContent = '-';
+				vendorNameDisplayAside.textContent = '-';
+				selectedVendorLabel.textContent = '';
 				return;
 			}
 
+			menuSelect.disabled = false;
 			vendorNameDisplay.textContent = vendor.nama_vendor;
 			vendorNameDisplayAside.textContent = vendor.nama_vendor;
 			selectedVendorLabel.textContent = `Menu yang tampil hanya milik ${vendor.nama_vendor}.`;
 
-			if (!vendor.menus.length) {
+			if (!vendor.menus || !vendor.menus.length) {
 				menuSelect.innerHTML = '<option value="">Menu belum tersedia</option>';
 				return;
 			}
+
+			const defaultOption = document.createElement('option');
+			defaultOption.value = '';
+			defaultOption.textContent = '-- Pilih menu --';
+			menuSelect.appendChild(defaultOption);
 
 			vendor.menus.forEach((menu) => {
 				const option = document.createElement('option');
@@ -506,6 +517,7 @@
 
 		vendorSelect.addEventListener('change', () => {
 			cart = [];
+			menuSelect.value = '';
 			renderMenuOptions();
 			renderCart();
 			updateSummary();
@@ -513,12 +525,24 @@
 
 		addItemButton.addEventListener('click', () => {
 			const vendor = getVendor();
-			const menu = vendor?.menus.find((menuItem) => String(menuItem.idmenu) === String(menuSelect.value));
+			const selectedMenuId = String(menuSelect.value).trim();
+			
+			if (!vendor) {
+				Swal.fire('Vendor belum dipilih', 'Silakan pilih vendor terlebih dahulu.', 'warning');
+				return;
+			}
+			
+			if (!selectedMenuId) {
+				Swal.fire('Menu belum dipilih', 'Silakan pilih menu terlebih dahulu.', 'warning');
+				return;
+			}
+
+			const menu = vendor?.menus.find((menuItem) => String(menuItem.idmenu) === selectedMenuId);
 			const jumlah = Math.max(1, Number(jumlahInput.value || 1));
 			const catatan = catatanInput.value.trim();
 
-			if (!vendor || !menu) {
-				Swal.fire('Menu belum dipilih', 'Silakan pilih vendor dan menu terlebih dahulu.', 'warning');
+			if (!menu) {
+				Swal.fire('Menu tidak valid', 'Menu yang dipilih tidak ditemukan.', 'warning');
 				return;
 			}
 
@@ -571,7 +595,9 @@
 				});
 		});
 
-		renderMenuOptions();
+		// Initialize display
+		menuSelect.innerHTML = '<option value="">-- Pilih vendor terlebih dahulu --</option>';
+		menuSelect.disabled = true;
 		renderCart();
 		updateSummary();
 	});

@@ -26,8 +26,24 @@
             </div>
         </div>
 
+        @if ((int) $pesanan->status_bayar === 1)
+            <div style="margin-top:18px;padding:18px;border-radius:18px;background:linear-gradient(135deg,rgba(34,197,94,.14),rgba(56,189,248,.12));border:1px solid rgba(34,197,94,.25);text-align:center;">
+                <div style="font-size:.82rem;color:#cbd5e1;text-transform:uppercase;letter-spacing:.12em;">QR Code Pesanan</div>
+                <h3 style="margin:8px 0 10px;">Tunjukkan saat proses verifikasi</h3>
+                <p style="margin:0 0 14px;color:#94a3b8;">QR code ini berisi ID pesanan <strong>{{ $pesanan->idpesanan }}</strong>.</p>
+
+                <div style="display:flex;justify-content:center;align-items:center;background:#fff;border-radius:18px;padding:14px;max-width:240px;margin:0 auto;">
+                    {!! $qrCodeSvg !!}
+                </div>
+                <div style="margin-top:12px;font-weight:700;color:#e2e8f0;">ID Pesanan: {{ $pesanan->idpesanan }}</div>
+            </div>
+        @endif
+
         @if ($paymentMethod === 'midtrans' && $snapToken)
             <button id="pay-button" onclick="snapPay()" style="padding:14px 18px;width:100%;border:none;border-radius:16px;font-weight:700;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;cursor:pointer;margin-top:18px;{{ (int) $pesanan->status_bayar === 1 ? 'display:none;' : '' }}">Lanjutkan ke Pembayaran Midtrans</button>
+            <form id="midtransConfirmForm" method="POST" action="{{ route('kantin.payment.confirm', $pesanan->order_code) }}" style="display:none;">
+                @csrf
+            </form>
         @else
             <form method="POST" action="{{ route('kantin.payment.confirm', $pesanan->order_code) }}" style="margin-top:18px;">
                 @csrf
@@ -54,6 +70,9 @@
 
         <section style="border:1px solid rgba(148,163,184,0.2);background:rgba(15,23,42,0.72);border-radius:24px;padding:22px;">
             <h3 style="margin-top:0;">Informasi pembayaran</h3>
+            @if ((int) $pesanan->status_bayar === 1)
+                <p style="color:#22c55e;line-height:1.7;font-weight:700;">Pembayaran berhasil diselesaikan.</p>
+            @endif
             @if ($paymentMethod === 'midtrans' && $snapToken)
                 <p style="color:#94a3b8;line-height:1.7;">Klik tombol di samping untuk melanjutkan ke gateway pembayaran Midtrans. Pilih metode pembayaran sesuai pilihan Anda (Kartu Kredit, Virtual Account, E-Wallet, dll).</p>
                 <div style="padding:16px;border-radius:18px;background:linear-gradient(135deg,rgba(56,189,248,.14),rgba(34,197,94,.12));border:1px dashed rgba(148,163,184,.25);text-align:center;">
@@ -78,12 +97,13 @@
         snap.pay('{{ $snapToken }}', {
             onSuccess: function(result) {
                 console.log('Payment success:', result);
-                fetch('{{ route("kantin.payment.show", $pesanan->order_code) }}')
-                    .then(response => response.text())
-                    .then(html => {
-                        document.body.innerHTML = html;
-                        window.location.href = '{{ route("kantin.payment.show", $pesanan->order_code) }}';
-                    });
+                const confirmForm = document.getElementById('midtransConfirmForm');
+                if (confirmForm) {
+                    confirmForm.submit();
+                    return;
+                }
+
+                window.location.href = '{{ route("kantin.payment.show", $pesanan->order_code) }}';
             },
             onPending: function(result) {
                 console.log('Payment pending:', result);

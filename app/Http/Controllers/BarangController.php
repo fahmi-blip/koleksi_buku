@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Barang;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Picqer\Barcode\Renderers\PngRenderer;
+use Picqer\Barcode\Types\TypeCode128;
 
 class BarangController extends Controller
 {
@@ -86,24 +88,32 @@ class BarangController extends Controller
 
         $labels = [];
         foreach ($ids as $id) {
+            $barang = $barangList[$id];
             $qty = isset($quantity[$id]) ? (int) $quantity[$id] : 1;
             $qty = max(1, $qty);
             for ($i = 0; $i < $qty; $i++) {
-                $labels[] = $barangList[$id];
+                $barcode = (new TypeCode128())->getBarcode($barang->id_barang);
+                $barcodeRenderer = new PngRenderer();
+                $barcodeImage = $barcodeRenderer->render($barcode);
+                $barcodeBase64 = 'data:image/png;base64,' . base64_encode($barcodeImage);
+                
+                $labels[] = [
+                    'barang' => $barang,
+                    'barcodeSvg' => $barcodeBase64,
+                ];
             }
         }
 
-        $startIndex = ($startY - 1) * 3 + ($startX - 1);
+        $startIndex = ($startY - 1) * 5 + ($startX - 1);
 
         $totalSlots = $startIndex + count($labels);
-        $totalPages = (int) ceil($totalSlots / 12);
+        $totalPages = (int) ceil($totalSlots / 40);
 
         $pages = [];
         $labelPointer = 0;
         for ($page = 0; $page < $totalPages; $page++) {
             $pageSlots = [];
-            $offset    = $page === 0 ? $startIndex : 0;   
-            for ($slot = 0; $slot < 12; $slot++) {
+            for ($slot = 0; $slot < 40; $slot++) {
                 if ($page === 0 && $slot < $startIndex) {
                     $pageSlots[] = null;  
                 } else {

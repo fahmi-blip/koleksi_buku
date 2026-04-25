@@ -8,10 +8,12 @@ use App\Http\Controllers\BukuController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\BarangController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\PemesananController;
 use App\Http\Controllers\AdminVendorController;
 use App\Http\Controllers\VendorKantinController;
-
+use App\Http\Controllers\QrScannerController;
+use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\PdfGenerator;
 
@@ -64,6 +66,16 @@ Route::middleware(['auth', 'verified','check.session'])->group(function () {
         Route::delete('/barang/destroy/{id}', [BarangController::class, 'destroy'])->name('barang.destroy');
         Route::post('/barang/cetak', [BarangController::class, 'formCetak'])->name('barang.formCetak');
         Route::post('/barang/cetak/pdf', [BarangController::class, 'cetakPdf'])->name('barang.cetakPdf');
+
+        Route::prefix('customer')->name('customer.')->group(function () {
+            Route::get('/', [CustomerController::class, 'index'])->name('index');
+            Route::post('/store-blob', [CustomerController::class, 'storeBlob'])->name('storeBlob');
+            Route::post('/store-file', [CustomerController::class, 'storeFile'])->name('storeFile');
+            Route::get('/photo/{customer}', [CustomerController::class, 'photo'])->name('photo');
+        });
+
+        Route::get('/qr-scanner', [QrScannerController::class, 'index'])->name('qr-scanner.index');
+        Route::post('/qr-scanner/lookup', [QrScannerController::class, 'lookup'])->name('qr-scanner.lookup');
     });
 
     Route::get('/latihan/table', [PageController::class, 'latihanTable'])->name('latihan.table');
@@ -76,6 +88,8 @@ Route::middleware(['auth', 'verified','check.session'])->group(function () {
         Route::get('/pos/barang/{id}', [PosController::class, 'getBarang'])->name('pos.getBarang');
         Route::post('/pos/store', [PosController::class, 'store'])->name('pos.store');
     });
+
+    Route::get('/barcode/{barang:id_barang}', [BarcodeController::class, 'index'])->name('barcode.index');
 });
 
 Route::middleware(['auth', 'check.session', 'role:admin'])

@@ -33,10 +33,10 @@
         margin: 0 auto;
     }
     
-    col.label-col { width: 64mm; }
+    col.label-col { width: 38mm; }
     
     table.label-sheet td {
-        height: 32mm;           
+        height: 18mm;           
         vertical-align: middle;
         text-align: center;
         overflow: hidden;
@@ -54,11 +54,10 @@
     } 
 
     .label-id {
-        font-size: 8pt;
+        font-size: 6pt;
         color: #000;
-        font-weight: bold;
+        font-weight: regular;
         margin-bottom: 1mm;
-        text-transform: uppercase;
     }
 
     .label-name {
@@ -83,6 +82,16 @@
         display: block;
         margin-top: 0.3mm;
     }
+
+    .label-barcode {
+        margin-top: 1mm;
+    }
+
+    .label-barcode img {
+        width: 80%;
+        height: auto;
+        display: block;
+    }
 </style>
 </head>
 <body>
@@ -91,19 +100,20 @@
 <div class="{{ !$loop->last ? 'page-wrap' : '' }}">
 <table class="label-sheet">
     <colgroup>
-        @for($c = 0; $c < 3; $c++)
+        @for($c = 0; $c < 5; $c++)
             <col class="label-col">
         @endfor
     </colgroup>
 
-    @for($r = 0; $r < 4; $r++)
+    @for($r = 0; $r < 8; $r++)
     <tr>
-        @for($c = 0; $c < 3; $c++)
-            @php $idx = $r * 3 + $c; $item = $slots[$idx] ?? null; @endphp
+        @for($c = 0; $c < 5; $c++)
+            @php $idx = $r * 5 + $c; $item = $slots[$idx] ?? null; @endphp
             @if($item)
             <td class="label-cell">
-                <div class="label-id">Feri Kurniawan, S. H.</div>
-                <div class="label-name">Batuan</div>
+                <div class="label-id">{{ $item['barang']->id_barang }}</div>
+                <div class="label-name">{{ $item['barang']->nama }}</div>
+                <div class="label-barcode"><img src="{{ $item['barcodeSvg'] }}" alt="barcode"></div>
             </td>
             @else
             <td class="label-cell empty"></td>

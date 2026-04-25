@@ -2,12 +2,19 @@
 
 namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
+use App\Models\Buku;
+use App\Models\Barang;
+use App\Models\Vendor;
 
 class PageController extends Controller
 {
    public function homePage()
     {
-        return view('pages.home');
+        $bukuCount = Buku::count();
+        $barangCount = Barang::count();
+        $vendorCount = Vendor::count();
+        
+        return view('pages.home', compact('bukuCount', 'barangCount', 'vendorCount'));
     }
 
     public function latihanTable()

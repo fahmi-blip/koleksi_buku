@@ -75,6 +75,16 @@
     
     {{-- Menu Barang --}}
     @if(Auth::user()->role == 'admin')
+    <li class="nav-item {{ request()->routeIs('customer*') ? 'active' : '' }}">
+      <a class="nav-link" href="{{ route("customer.index") }}">
+        <span class="menu-title">Customer</span>
+        <i class="mdi mdi-account-multiple menu-icon"></i>
+      </a>
+
+    </li>
+    @endif
+
+    @if(Auth::user()->role == 'admin')
     <li class="nav-item {{ Request::is('barang*') ? 'active' : '' }}">
       <a class="nav-link" href="{{ route('barang.index') }}">
         <span class="menu-title">Barang & Label Harga</span>
@@ -82,6 +92,15 @@
       </a>
     </li>
     @endif
+
+    {{-- @if(Auth::user()->role == 'admin')
+    <li class="nav-item {{ Request::is('qr-scanner*') ? 'active' : '' }}">
+      <a class="nav-link" href="{{ route('qr-scanner.index') }}">
+        <span class="menu-title">QR Scanner</span>
+        <i class="mdi mdi-qrcode-scan menu-icon"></i>
+      </a>
+    </li>
+    @endif --}}
 
     @if(Auth::user()->role == 'admin')
     <li class="nav-item {{ Request::is('admin/vendor*') ? 'active' : '' }}">

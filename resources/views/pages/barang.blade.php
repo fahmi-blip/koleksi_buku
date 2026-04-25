@@ -37,7 +37,7 @@
                                     <th>ID Barang</th>
                                     <th>Nama Barang</th>
                                     <th>Harga</th>
-                                    <th width="15%">Aksi</th>
+                                    <th width="18%">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -55,6 +55,10 @@
                                         <a href="{{ route('barang.edit', $barang->id_barang) }}"
                                            class="mb-1 btn btn-sm btn-warning">
                                             <i class="mdi mdi-pencil"></i>
+                                        </a>
+                                        <a href="{{ route('barcode.index', $barang->id_barang) }}"
+                                           class="mb-1 btn btn-sm btn-info" target="_blank">
+                                            <i class="mdi mdi-barcode"></i>
                                         </a>
                                         <button type="button" class="mb-1 btn btn-sm btn-danger"
                                                 onclick="hapusBarang('{{ $barang->id_barang }}')">

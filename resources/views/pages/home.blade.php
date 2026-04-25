@@ -13,10 +13,10 @@
                 <div class="text-white card bg-gradient-danger card-img-holder">
                   <div class="card-body">
                     <img src="assets/images/dashboard/circle.svg" class="card-img-absolute" alt="circle-image" />
-                    <h4 class="mb-3 font-weight-normal">Weekly Sales <i class="mdi mdi-chart-line mdi-24px float-end"></i>
+                    <h4 class="mb-3 font-weight-normal">Banyak Buku <i class="mdi mdi-book mdi-24px float-end"></i>
                     </h4>
-                    <h2 class="mb-5">$ 15,0000</h2>
-                    <h6 class="card-text">Increased by 60%</h6>
+                    <h2 class="mb-5">{{ $bukuCount }}</h2>
+                    <h6 class="card-text">Total buku dalam katalog</h6>
                   </div>
                 </div>
               </div>
@@ -24,10 +24,10 @@
                 <div class="text-white card bg-gradient-info card-img-holder">
                   <div class="card-body">
                     <img src="assets/images/dashboard/circle.svg" class="card-img-absolute" alt="circle-image" />
-                    <h4 class="mb-3 font-weight-normal">Weekly Orders <i class="mdi mdi-bookmark-outline mdi-24px float-end"></i>
+                    <h4 class="mb-3 font-weight-normal">Banyak Barang <i class="mdi mdi-package-variant mdi-24px float-end"></i>
                     </h4>
-                    <h2 class="mb-5">45,6334</h2>
-                    <h6 class="card-text">Decreased by 10%</h6>
+                    <h2 class="mb-5">{{ $barangCount }}</h2>
+                    <h6 class="card-text">Total barang tersedia</h6>
                   </div>
                 </div>
               </div>
@@ -35,10 +35,10 @@
                 <div class="text-white card bg-gradient-success card-img-holder">
                   <div class="card-body">
                     <img src="assets/images/dashboard/circle.svg" class="card-img-absolute" alt="circle-image" />
-                    <h4 class="mb-3 font-weight-normal">Visitors Online <i class="mdi mdi-diamond mdi-24px float-end"></i>
+                    <h4 class="mb-3 font-weight-normal">Banyak Vendor <i class="mdi mdi-store mdi-24px float-end"></i>
                     </h4>
-                    <h2 class="mb-5">95,5741</h2>
-                    <h6 class="card-text">Increased by 5%</h6>
+                    <h2 class="mb-5">{{ $vendorCount }}</h2>
+                    <h6 class="card-text">Total vendor terdaftar</h6>
                   </div>
                 </div>
               </div>
