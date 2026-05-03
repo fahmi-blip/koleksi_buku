@@ -76,6 +76,10 @@ Route::middleware(['auth', 'verified','check.session'])->group(function () {
 
         Route::get('/qr-scanner', [QrScannerController::class, 'index'])->name('qr-scanner.index');
         Route::post('/qr-scanner/lookup', [QrScannerController::class, 'lookup'])->name('qr-scanner.lookup');
+
+        // Barcode camera scanner (admin)
+        Route::get('/barcode-scanner', [\App\Http\Controllers\BarcodeScannerController::class, 'index'])->name('barcode-scanner.index');
+        Route::post('/barcode-scanner/lookup', [\App\Http\Controllers\BarcodeScannerController::class, 'lookup'])->name('barcode-scanner.lookup');
     });
 
     Route::get('/latihan/table', [PageController::class, 'latihanTable'])->name('latihan.table');
