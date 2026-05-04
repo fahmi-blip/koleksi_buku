@@ -36,6 +36,8 @@ Route::post('/kantin/checkout', [PemesananController::class, 'store'])->name('ka
 Route::get('/kantin/payment/{pesanan:order_code}', [PemesananController::class, 'payment'])->name('kantin.payment.show');
 Route::post('/kantin/payment/{pesanan:order_code}/confirm', [PemesananController::class, 'confirmPayment'])->name('kantin.payment.confirm');
 Route::post('/kantin/payment/webhook/midtrans', [PemesananController::class, 'webhookMidtrans'])->withoutMiddleware(['web'])->name('kantin.webhook.midtrans');
+Route::post('/kantin/qrcode/lookup', [PemesananController::class, 'lookupQRCode'])->name('kantin.qrcode.lookup');
+Route::get('/kantin/vendor/scan-qr', function () { return view('pages.kantin.vendor-scan-qr'); })->name('kantin.vendor.scan-qr');
 
 Route::middleware(['auth', 'verified','check.session'])->group(function () {
     Route::get('/', [PageController::class, 'homePage'])->name('home');

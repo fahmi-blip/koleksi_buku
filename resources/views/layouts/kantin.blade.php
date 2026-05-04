@@ -90,6 +90,7 @@
             </div>
             <div class="top-actions">
                 <a class="chip primary" href="{{ route('kantin.order') }}">Mulai Pesan</a>
+                <a class="chip primary" href="{{ route('kantin.vendor.scan-qr') }}">Vendor Scan</a>
             </div>
         </div>
 

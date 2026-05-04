@@ -231,6 +231,49 @@ class PemesananController extends Controller
         ]);
     }
 
+    public function lookupQRCode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'idpesanan' => 'required|integer|min:1',
+        ]);
+
+        $pesanan = Pesanan::with(['details.menu', 'vendor', 'user'])
+            ->where('idpesanan', $validated['idpesanan'])
+            ->first();
+
+        if (!$pesanan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesanan tidak ditemukan',
+            ], 404);
+        }
+
+        $statusBayar = (int) $pesanan->status_bayar === 1 ? 'Lunas' : 'Belum Bayar';
+        $statusBayarColor = (int) $pesanan->status_bayar === 1 ? '#22c55e' : '#f59e0b';
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'idpesanan' => $pesanan->idpesanan,
+                'order_code' => $pesanan->order_code,
+                'vendor_name' => $pesanan->vendor->nama_vendor,
+                'customer_name' => $pesanan->nama,
+                'status_bayar' => $statusBayar,
+                'status_bayar_color' => $statusBayarColor,
+                'total' => (int) $pesanan->total,
+                'items' => $pesanan->details->map(function ($detail) {
+                    return [
+                        'nama_menu' => $detail->menu->nama_menu,
+                        'jumlah' => (int) $detail->jumlah,
+                        'harga' => (int) $detail->harga,
+                        'subtotal' => (int) $detail->subtotal,
+                        'catatan' => $detail->catatan ?? '-',
+                    ];
+                })->values(),
+            ],
+        ]);
+    }
+
     protected function createGuestUser(): User
     {
         $guest = User::create([

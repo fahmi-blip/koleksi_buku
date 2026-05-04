@@ -23,7 +23,7 @@
                                 <i class="mdi mdi-checkbox-multiple-blank-outline"></i> Batal Semua
                             </button>
                         </div>
-                        <div class="d-flex gap-2 align-items-center">
+                        <div class="gap-2 d-flex align-items-center">
                             <button type="button" class="btn btn-sm btn-outline-primary" id="btnScanBarcode">
                                 <i class="mdi mdi-camera"></i> Scan Barcode
                             </button>
@@ -126,7 +126,7 @@
                 <div class="row">
                     <div class="col-md-7">
                         <div id="videoContainer" style="position:relative;">
-                            <video id="video" width="100%" autoplay muted playsinline style="border-radius:8px;background:#000"></video>
+                            <video id="video" autoplay muted playsinline></video>
                             <canvas id="canvas" style="display:none;"></canvas>
                         </div>
                         <div class="mt-2 text-muted small">Pastikan browser punya izin kamera dan arahkan barcode ke kamera.</div>
@@ -151,13 +151,6 @@
                             <div><strong>Harga:</strong> <span id="scannedHarga">-</span></div>
                         </div>
                         <div class="mt-3">
-                            <label class="form-label small">Masukkan barcode secara manual (fallback)</label>
-                            <div class="input-group">
-                                <input id="manualBarcode" type="text" class="form-control form-control-sm" placeholder="Masukkan kode jika scanner gagal" />
-                                <button id="btnManualSubmit" class="btn btn-sm btn-primary">Gunakan</button>
-                            </div>
-                        </div>
-                        <div class="mt-3">
                             <button id="btnCloseScanner" type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Tutup</button>
                             <button id="btnResetScanner" type="button" class="btn btn-sm btn-outline-primary">Scan Lagi</button>
                         </div>
@@ -170,238 +163,555 @@
 
 <!-- Beep audio -->
 <audio id="beepAudio" preload="auto">
-    <source src="data:audio/wav;base64,UklGRkQAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQAAAAA=" type="audio/wav">
+    <source src="/assets/sounds/u_edtmwfwu7c-beep-329314.mp3" type="audio/mpeg">
 </audio>
 
 @push('scripts')
-<script src="https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js"></script>
+{{-- Ganti library: pakai html5-qrcode yang jauh lebih stabil untuk webcam laptop --}}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+ 
+    // ── Elemen DOM ─────────────────────────────────────────────────────────
     const btnScanBarcode = document.getElementById('btnScanBarcode');
-    const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const beepAudio = document.getElementById('beepAudio');
-
-    let codeReader = null;
-    let selectedDeviceId = null;
-
-    btnScanBarcode.addEventListener('click', async function () {
-        // user gesture: show modal and unlock audio playback
-        scannerModal.show();
-        try { const p = beepAudio.play(); if (p && p.then) p.then(()=>beepAudio.pause()).catch(()=>{}); } catch(e){}
-    });
-
-    // populate camera list and start scanner when modal fully shown
-    document.getElementById('scannerModal').addEventListener('shown.bs.modal', async function () {
-        await populateCameraList();
-        // small delay to ensure video element is visible
-        setTimeout(() => startScanner(), 200);
-    });
-
-    document.getElementById('btnCloseScanner').addEventListener('click', function () {
-        stopScanner();
-    });
-    document.getElementById('btnResetScanner').addEventListener('click', function () {
-        // reset displayed values and continue scanning
-        document.getElementById('scannedId').textContent = '-';
-        document.getElementById('scannedNama').textContent = '-';
-        document.getElementById('scannedHarga').textContent = '-';
-        startScanner();
-    });
-
+    const scannerModalEl = document.getElementById('scannerModal');
+    const video          = document.getElementById('video');
+    const beepAudio      = document.getElementById('beepAudio');
+    const cameraSelect   = document.getElementById('cameraSelect');
+    const statusEl       = document.getElementById('scannerStatus');
+    const manualInput    = document.getElementById('manualBarcode');
+    const manualBtn      = document.getElementById('btnManualSubmit');
+    const resetBtn       = document.getElementById('btnResetScanner');
+    const fileInput      = document.getElementById('fileInputScan');
+    const filePreview    = document.getElementById('filePreview');
+ 
+    // ── State ──────────────────────────────────────────────────────────────
+    let html5Scanner  = null;   // instance Html5Qrcode
+    let isRunning     = false;
+    let scanLocked    = false;  // kunci setelah berhasil scan (agar tidak dobel)
+    let videoStream   = null;
+ 
+    // ── Helpers ────────────────────────────────────────────────────────────
+ 
+    function setStatus(msg) {
+        if (statusEl) statusEl.textContent = msg;
+        console.log('[Scanner]', msg);
+    }
+ 
+    function setResult(id, nama, harga) {
+        document.getElementById('scannedId').textContent    = id    ?? '-';
+        document.getElementById('scannedNama').textContent  = nama  ?? '-';
+        document.getElementById('scannedHarga').textContent = harga ?? '-';
+    }
+ 
     function playBeep() {
-        try { beepAudio.currentTime = 0; beepAudio.play(); }
-        catch(e) { console.log('beep', e); }
+        // Coba audio element dulu (user interaction mungkin sudah mengizinkan)
+        try {
+            if (beepAudio) {
+                beepAudio.currentTime = 0;
+                beepAudio.play().catch(() => {
+                    // Jika gagal autoplay, gunakan WebAudio sebagai fallback
+                    playWebAudioBeep();
+                });
+                return;
+            }
+        } catch (e) {
+            console.warn('beepAudio.play() failed', e);
+        }
+        playWebAudioBeep();
     }
 
-    async function startScanner() {
-        if (codeReader) {
-            return;
-        }
-        // trigger permission prompt explicitly (helps Chrome show camera permission)
+    function playWebAudioBeep() {
         try {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                // stop temporary tracks after permission granted
-                tempStream.getTracks().forEach(t => t.stop());
-            }
-        } catch (permErr) {
-            console.warn('Camera permission denied or not available', permErr);
-            return;
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = 'sine';
+            o.frequency.value = 1100;
+            g.gain.value = 0.05; // jangan terlalu kencang
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.start();
+            setTimeout(() => { try { o.stop(); ctx.close(); } catch (_) {} }, 140);
+        } catch (e) {
+            // nothing
         }
+    }
 
-        document.getElementById('scannerStatus').textContent = 'Mencari perangkat kamera...';
-        codeReader = new ZXing.BrowserMultiFormatReader();
+    // Native BarcodeDetector (when supported) — often lebih andal di mobile
+    async function tryNativeBarcodeDetector(deviceId) {
+        if (!('BarcodeDetector' in window)) return false;
         try {
-            const devices = await codeReader.listVideoInputDevices();
-            await populateCameraList(devices);
-            const select = document.getElementById('cameraSelect');
-            selectedDeviceId = select && select.value ? select.value : (devices && devices[0]?.deviceId);
+            const formats = [
+                'code_128','code_39','ean_13','ean_8','upc_a','upc_e','qr_code'
+            ];
+            const detector = new window.BarcodeDetector({ formats });
 
-            document.getElementById('scannerStatus').textContent = 'Memulai kamera...';
+            const constraints = deviceId
+                ? { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }
+                : { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false };
 
-            codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
-                if (result) {
-                    // stop scanning
-                    stopScanner();
-                    const code = result.getText();
-                    handleScannedCode(code);
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            videoStream = stream;
+            video.srcObject = stream;
+            await video.play().catch(() => {});
+            isRunning = true;
+            setStatus('Mendeteksi barcode (native) — arahkan ke kamera…');
+
+            async function frameLoop() {
+                if (!isRunning || scanLocked) return;
+                try {
+                    const barcodes = await detector.detect(video);
+                    if (barcodes && barcodes.length) {
+                        const b = barcodes[0];
+                        const code = b.rawValue || b.rawData || (b.rawStringValue && String(b.rawStringValue)) || '';
+                        if (code) {
+                            scanLocked = true;
+                            await stopScanner();
+                            await handleScannedCode(code);
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    // ignore per-frame errors
                 }
-            });
-            document.getElementById('scannerStatus').textContent = 'Mendeteksi...';
+                requestAnimationFrame(frameLoop);
+            }
+
+            requestAnimationFrame(frameLoop);
+            return true;
         } catch (e) {
-            console.error('Scanner error', e);
-            document.getElementById('scannerStatus').textContent = 'Error: ' + (e.message || e.name || 'tidak dapat mengakses kamera');
+            console.warn('tryNativeBarcodeDetector:', e);
+            try { if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; } } catch (_) {}
+            return false;
         }
     }
-
-    async function populateCameraList(devices) {
-        try {
-            const select = document.getElementById('cameraSelect');
-            select.innerHTML = '';
-            let list = devices;
-            if (!list) {
-                const tempReader = new ZXing.BrowserMultiFormatReader();
-                list = await tempReader.listVideoInputDevices();
+ 
+    // ── Stop scanner ───────────────────────────────────────────────────────
+ 
+    async function stopScanner() {
+        isRunning  = false;
+        scanLocked = false;
+ 
+        if (html5Scanner) {
+            try {
+                const state = html5Scanner.getState();
+                // state 2 = SCANNING, state 3 = PAUSED
+                if (state === 2 || state === 3) {
+                    await html5Scanner.stop();
+                }
+            } catch (e) {
+                console.warn('html5Scanner.stop():', e);
             }
-            if (!list || list.length === 0) {
-                const opt = document.createElement('option'); opt.value = ''; opt.text = 'Tidak ada kamera terdeteksi'; select.appendChild(opt); return;
-            }
-            list.forEach(d => {
-                const opt = document.createElement('option'); opt.value = d.deviceId; opt.text = d.label || d.deviceId; select.appendChild(opt);
-            });
-            // select first
-            select.value = selectedDeviceId || list[0].deviceId;
-
-            select.onchange = function () {
-                selectedDeviceId = select.value;
-                stopScanner();
-                startScanner();
-            };
-        } catch (e) {
-            console.warn('populateCameraList', e);
+            try { await html5Scanner.clear(); } catch (e) {}
+            html5Scanner = null;
         }
-    }
-
-    function stopScanner() {
-        if (codeReader) {
-            try { codeReader.reset(); } catch(e) {}
-            codeReader = null;
+ 
+        // matikan stream kamera yang mungkin masih aktif
+        if (videoStream) {
+            try { videoStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+            videoStream = null;
         }
-        try { if (video && video.srcObject) {
-            video.srcObject.getTracks().forEach(t=>t.stop());
+        if (video.srcObject) {
+            try { video.srcObject.getTracks().forEach(t => t.stop()); } catch (e) {}
             video.srcObject = null;
-        }} catch(e){}
-    }
+        }
 
-    async function handleScannedCode(code) {
-        // play beep
-        playBeep();
-
-        // show loading state
-        document.getElementById('scannedId').textContent = code;
-        document.getElementById('scannedNama').textContent = 'Mencari...';
-        document.getElementById('scannedHarga').textContent = '';
-
+        // Hapus elemen reader jika ada
         try {
-            const res = await fetch('{{ route('barcode-scanner.lookup') }}', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ barcode: code })
+            const old = document.getElementById('html5qr-reader');
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+        } catch (e) {}
+    }
+ 
+    // ── Populate dropdown kamera ───────────────────────────────────────────
+ 
+    async function populateCameras() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const cams    = devices.filter(d => d.kind === 'videoinput');
+ 
+            cameraSelect.innerHTML = '';
+ 
+            if (!cams.length) {
+                cameraSelect.innerHTML = '<option value="">Tidak ada kamera terdeteksi</option>';
+                return null;
+            }
+ 
+            cams.forEach((cam, i) => {
+                const opt       = document.createElement('option');
+                opt.value       = cam.deviceId;
+                opt.textContent = cam.label || ('Kamera ' + (i + 1));
+                cameraSelect.appendChild(opt);
+            });
+ 
+            // pilih kamera pertama (biasanya built-in webcam laptop)
+            cameraSelect.value = cams[0].deviceId;
+            return cams[0].deviceId;
+ 
+        } catch (e) {
+            console.error('enumerateDevices:', e);
+            return null;
+        }
+    }
+ 
+    // ── Start scanner ──────────────────────────────────────────────────────
+  
+    async function startScanner() {
+        await stopScanner();
+        scanLocked = false;
+        setStatus('Meminta izin kamera…');
+ 
+        // 1. Minta izin kamera terlebih dahulu
+        try {
+            const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            videoStream = tempStream;
+            // Langsung tampilkan ke <video> sebagai preview sementara
+            video.srcObject = tempStream;
+            try { await video.play(); } catch (_) {}
+        } catch (err) {
+            setStatus('Kamera ditolak: ' + (err.message || err.name));
+            return;
+        }
+ 
+        // 2. Setelah izin diberikan, enumerate kamera agar dapat label
+        const selectedId = await populateCameras();
+ 
+        // 3. Buat container untuk Html5Qrcode reader di dalam videoContainer
+        //    supaya html5-qrcode bisa menampilkan video/stream langsung (tidak tersembunyi)
+        let readerId = 'html5qr-reader';
+        let readerDiv = document.getElementById(readerId);
+        const videoContainer = document.getElementById('videoContainer');
+        if (!readerDiv) {
+            readerDiv = document.createElement('div');
+            readerDiv.id = readerId;
+            readerDiv.style.cssText = 'margin-top:-150px;position:relative;width:100%;height:360px;max-height:60vh;border-radius:8px;overflow:hidden;background:#000;';
+            if (videoContainer) videoContainer.appendChild(readerDiv); else document.body.appendChild(readerDiv);
+        }
+ 
+        // 4. Hentikan preview stream sementara agar Html5Qrcode bisa ambil kamera
+        if (videoStream) {
+            videoStream.getTracks().forEach(t => t.stop());
+            videoStream = null;
+            video.srcObject = null;
+        }
+ 
+        setStatus('Memulai scanner…');
+
+        // Jika perangkat mendukung BarcodeDetector native, coba dulu (lebih andal di banyak ponsel)
+        try {
+            const usedNative = await tryNativeBarcodeDetector(selectedId);
+            if (usedNative) return;
+        } catch (e) {
+            console.warn('tryNativeBarcodeDetector threw', e);
+        }
+
+        html5Scanner = new Html5Qrcode(readerId, {
+            verbose: false,
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+        });
+ 
+        // Hitung area pemindaian lebih besar agar bisa membaca layar HP
+        function calcQrbox() {
+            const w = Math.min(900, Math.max(300, Math.floor(window.innerWidth * 0.75)));
+            return { width: w, height: Math.round(w * 0.45) };
+        }
+
+        const config = {
+            fps: 15,
+            qrbox: calcQrbox(),
+            aspectRatio: 1.5,
+            formatsToSupport: [
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.QR_CODE,
+            ],
+            rememberLastUsedCamera: false,
+            showTorchButtonIfSupported: true,
+        };
+ 
+        const cameraConfig = selectedId
+            ? { deviceId: { exact: selectedId } }
+            : { facingMode: 'environment' };
+ 
+        try {
+            await html5Scanner.start(
+                cameraConfig,
+                config,
+                // ── onScanSuccess ──────────────────────────────────────────
+                async function (decodedText, decodedResult) {
+                    if (scanLocked) return;
+                    scanLocked = true;
+ 
+                    console.log('[Scanner] Barcode terbaca:', decodedText, decodedResult);
+                    setStatus('Barcode terbaca: ' + decodedText);
+ 
+                    await stopScanner();
+                    await handleScannedCode(decodedText);
+                },
+                // ── onScanFailure ──────────────────────────────────────────
+                function (errorMsg) {
+                    }
+            );
+ 
+            isRunning = true;
+            setStatus('Mendeteksi barcode — arahkan ke kamera…');
+ 
+        } catch (err) {
+            console.error('Html5Qrcode.start() gagal:', err);
+            setStatus('Error memulai kamera: ' + (err.message || JSON.stringify(err)));
+ 
+            // Fallback: tampilkan video biasa tanpa decode otomatis
+            await fallbackManualStream(selectedId);
+        }
+    }
+ 
+    // ── Fallback jika Html5Qrcode gagal ──────────────────────────────────
+    // Tampilkan kamera via getUserMedia biasa + canvas snapshot decode setiap 400ms
+ 
+    async function fallbackManualStream(deviceId) {
+        setStatus('Mode fallback — gunakan input manual jika tidak terbaca');
+ 
+        try {
+            const constraints = {
+                video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' },
+                audio: false,
+            };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            videoStream   = stream;
+            video.srcObject = stream;
+            await video.play().catch(() => {});
+            isRunning = true;
+ 
+            // Canvas snapshot decode loop
+            const canvas  = document.createElement('canvas');
+            const ctx     = canvas.getContext('2d', { willReadFrequently: true });
+            const ZXing   = window.ZXing;   // ZXing mungkin sudah di-load sebelumnya
+ 
+            // coba load ZXing jika belum ada
+            if (!ZXing) {
+                await loadScript('https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js');
+            }
+ 
+            async function snapshotLoop() {
+                if (!isRunning || scanLocked) return;
+                if (video.readyState < 2 || video.videoWidth === 0) {
+                    setTimeout(snapshotLoop, 300);
+                    return;
+                }
+                canvas.width  = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+ 
+                try {
+                    const reader = new window.ZXing.BrowserMultiFormatReader();
+                    const imgData = canvas.toDataURL('image/png');
+                    const img = new Image();
+                    img.src = imgData;
+                    await img.decode();
+                    const result = await reader.decodeFromImageElement(img);
+                    if (result && !scanLocked) {
+                        scanLocked = true;
+                        await handleScannedCode(result.getText());
+                        return;
+                    }
+                } catch (_) {}
+ 
+                if (isRunning) setTimeout(snapshotLoop, 350);
+            }
+ 
+            setTimeout(snapshotLoop, 500);
+ 
+        } catch (err) {
+            setStatus('Tidak bisa mengakses kamera. Gunakan input manual.');
+        }
+    }
+ 
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            if (document.querySelector('script[src="' + src + '"]')) { resolve(); return; }
+            const s   = document.createElement('script');
+            s.src     = src;
+            s.onload  = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+        });
+    }
+ 
+    // ── Lookup ke server ───────────────────────────────────────────────────
+ 
+    async function handleScannedCode(code) {
+        playBeep();
+        setResult(code, 'Mencari…', '');
+ 
+        try {
+            const res  = await fetch('{{ route('barcode-scanner.lookup') }}', {
+                method:  'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                },
+                body: JSON.stringify({ barcode: code }),
             });
             const json = await res.json();
+ 
             if (json.success) {
-                document.getElementById('scannedId').textContent = json.data.id_barang;
-                document.getElementById('scannedNama').textContent = json.data.nama;
-                document.getElementById('scannedHarga').textContent = 'Rp ' + json.data.harga.toLocaleString('id-ID');
+                setResult(
+                    json.data.id_barang,
+                    json.data.nama,
+                    'Rp ' + Number(json.data.harga).toLocaleString('id-ID')
+                );
+                setStatus('✓ Barang ditemukan');
             } else {
-                document.getElementById('scannedNama').textContent = 'Barang tidak ditemukan';
+                setResult(code, '⚠ Barang tidak ditemukan', '');
+                setStatus('Barang tidak ditemukan untuk kode: ' + code);
             }
         } catch (e) {
-            console.error(e);
-            document.getElementById('scannedNama').textContent = 'Terjadi kesalahan';
-            document.getElementById('scannerStatus').textContent = 'Error saat lookup';
+            console.error('Fetch error:', e);
+            setResult(code, '✗ Gagal menghubungi server', '');
+            setStatus('Error jaringan');
         }
     }
-
-    // Ensure scanner stops when modal hidden
-    document.getElementById('scannerModal').addEventListener('hidden.bs.modal', function () {
-        stopScanner();
-    });
-
-    // manual submit fallback
-    document.getElementById('btnManualSubmit').addEventListener('click', function (e) {
-        e.preventDefault();
-        const code = document.getElementById('manualBarcode').value.trim();
-        if (!code) return alert('Masukkan kode barcode');
-        stopScanner();
-        handleScannedCode(code);
-    });
-
-    // image upload fallback
-    const fileInput = document.getElementById('fileInputScan');
-    const filePreview = document.getElementById('filePreview');
-    fileInput.addEventListener('change', async function (e) {
-        const f = e.target.files && e.target.files[0];
+ 
+    // ── Upload gambar barcode ──────────────────────────────────────────────
+ 
+    fileInput.addEventListener('change', async function () {
+        const f = this.files && this.files[0];
         if (!f) return;
-        const url = URL.createObjectURL(f);
-        filePreview.src = url; filePreview.style.display = 'block';
-        document.getElementById('scannerStatus').textContent = 'Mencoba decode dari gambar...';
+ 
+        const url          = URL.createObjectURL(f);
+        filePreview.src    = url;
+        filePreview.style.display = 'block';
+        setStatus('Membaca barcode dari gambar…');
+ 
         try {
-            const img = new Image(); img.src = url; await img.decode();
-            const reader = new ZXing.BrowserMultiFormatReader();
-            let result = null;
-            try {
-                result = await reader.decodeFromImageElement(img);
-            } catch (e) {
-                result = null;
-            }
-
-            if (!result) {
-                // preprocess: resize, grayscale, threshold
-                const off = document.createElement('canvas');
-                const maxW = 1200;
-                const scale = Math.min(1, maxW / img.naturalWidth);
-                off.width = Math.max(100, Math.round(img.naturalWidth * scale));
-                off.height = Math.max(100, Math.round(img.naturalHeight * scale));
-                const ctx = off.getContext('2d');
-                ctx.drawImage(img, 0, 0, off.width, off.height);
-                const imageData = ctx.getImageData(0, 0, off.width, off.height);
-                const data = imageData.data;
-                let sum = 0;
-                for (let i = 0; i < data.length; i += 4) {
-                    const r = data[i], g = data[i + 1], b = data[i + 2];
-                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-                    data[i] = data[i + 1] = data[i + 2] = lum;
-                    sum += lum;
-                }
-                const avg = sum / (data.length / 4 || 1);
-                for (let i = 0; i < data.length; i += 4) {
-                    const v = data[i];
-                    const v2 = v > avg ? 255 : 0;
-                    data[i] = data[i + 1] = data[i + 2] = v2;
-                }
-                ctx.putImageData(imageData, 0, 0);
-                const dataUrl = off.toDataURL('image/png');
-                const pImg = new Image(); pImg.src = dataUrl; await pImg.decode();
+            // Coba Html5Qrcode file scan dulu
+            if (html5Scanner || true) {
+                const tempScanner = new Html5Qrcode('html5qr-reader');
                 try {
-                    result = await reader.decodeFromImageElement(pImg);
+                    const result = await tempScanner.scanFile(f, false);
+                    if (result) {
+                        setStatus('Barcode terbaca dari gambar');
+                        await handleScannedCode(result);
+                        return;
+                    }
                 } catch (e) {
-                    result = null;
+                    console.warn('Html5Qrcode scanFile gagal, coba ZXing:', e);
                 }
             }
-
+ 
+            // Fallback ZXing
+            await loadScript('https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js');
+            const reader = new window.ZXing.BrowserMultiFormatReader();
+            const img    = new Image();
+            img.src      = url;
+            await img.decode();
+ 
+            let result = null;
+            try { result = await reader.decodeFromImageElement(img); } catch (_) {}
+ 
+            if (!result) result = await decodeWithPreprocess(reader, img);
+ 
             if (result) {
-                handleScannedCode(result.getText());
+                setStatus('Barcode terbaca dari gambar');
+                await handleScannedCode(result.getText());
             } else {
-                document.getElementById('scannerStatus').textContent = 'Gagal membaca dari gambar';
+                setStatus('Gagal membaca barcode dari gambar. Coba foto lebih jelas.');
             }
         } catch (err) {
-            console.error('image decode error', err);
-            document.getElementById('scannerStatus').textContent = 'Gagal membaca dari gambar';
+            console.error('File decode error:', err);
+            setStatus('Error membaca gambar');
         }
     });
+ 
+    async function decodeWithPreprocess(reader, img) {
+        const off   = document.createElement('canvas');
+        const MAX   = 1600;
+        const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 100, img.naturalHeight || 100));
+        off.width   = Math.round((img.naturalWidth  || 300) * scale);
+        off.height  = Math.round((img.naturalHeight || 150) * scale);
+        const ctx   = off.getContext('2d');
+        ctx.drawImage(img, 0, 0, off.width, off.height);
+ 
+        const imgData = ctx.getImageData(0, 0, off.width, off.height);
+        const d = imgData.data;
+        let sum = 0;
+        for (let i = 0; i < d.length; i += 4) {
+            const lum = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+            d[i] = d[i+1] = d[i+2] = lum;
+            sum += lum;
+        }
+        const avg = sum / (d.length / 4);
+        for (let i = 0; i < d.length; i += 4) {
+            const v = d[i] > avg ? 255 : 0;
+            d[i] = d[i+1] = d[i+2] = v;
+        }
+        ctx.putImageData(imgData, 0, 0);
+ 
+        const pImg = new Image();
+        pImg.src   = off.toDataURL('image/png');
+        await pImg.decode();
+        try { return await reader.decodeFromImageElement(pImg); } catch (_) { return null; }
+    }
+ 
+    // ── Event: buka modal ─────────────────────────────────────────────────
+ 
+    btnScanBarcode.addEventListener('click', function () {
+        beepAudio.play().then(() => beepAudio.pause()).catch(() => {});
+        new bootstrap.Modal(scannerModalEl).show();
+    });
+ 
+    // ── Event: modal fully shown → start kamera ───────────────────────────
+ 
+    scannerModalEl.addEventListener('shown.bs.modal', async function () {
+        setResult('-', '-', '-');
+        filePreview.style.display = 'none';
+        fileInput.value = '';
+        await startScanner();
+    });
+ 
+    // ── Event: modal ditutup → stop kamera ───────────────────────────────
+ 
+    scannerModalEl.addEventListener('hide.bs.modal', async function () {
+        await stopScanner();
+    });
+ 
+    // ── Event: ganti kamera ───────────────────────────────────────────────
+ 
+    cameraSelect.addEventListener('change', async function () {
+        setResult('-', '-', '-');
+        await startScanner();
+    });
+ 
+    // ── Event: Scan Lagi ──────────────────────────────────────────────────
+ 
+    resetBtn.addEventListener('click', async function () {
+        setResult('-', '-', '-');
+        await startScanner();
+    });
+ 
+    // ── Event: input manual ───────────────────────────────────────────────
+ 
+    manualBtn.addEventListener('click', async function () {
+        const code = (manualInput.value || '').trim();
+        if (!code) { alert('Masukkan kode barcode terlebih dahulu'); return; }
+        stopScanner();
+        await handleScannedCode(code);
+    });
+ 
+    manualInput.addEventListener('keydown', async function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const code = this.value.trim();
+        if (!code) return;
+        await stopScanner();
+        await handleScannedCode(code);
+    });
+ 
 });
 </script>
 @endpush
