@@ -14,6 +14,7 @@ use App\Http\Controllers\AdminVendorController;
 use App\Http\Controllers\VendorKantinController;
 use App\Http\Controllers\QrScannerController;
 use App\Http\Controllers\BarcodeController;
+use App\Http\Controllers\KunjunganTokoController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\PdfGenerator;
 
@@ -79,7 +80,7 @@ Route::middleware(['auth', 'verified','check.session'])->group(function () {
         Route::get('/qr-scanner', [QrScannerController::class, 'index'])->name('qr-scanner.index');
         Route::post('/qr-scanner/lookup', [QrScannerController::class, 'lookup'])->name('qr-scanner.lookup');
 
-        // Barcode camera scanner (admin)
+        // // Barcode camera scanner (admin)
         Route::get('/barcode-scanner', [\App\Http\Controllers\BarcodeScannerController::class, 'index'])->name('barcode-scanner.index');
         Route::post('/barcode-scanner/lookup', [\App\Http\Controllers\BarcodeScannerController::class, 'lookup'])->name('barcode-scanner.lookup');
     });
@@ -96,6 +97,13 @@ Route::middleware(['auth', 'verified','check.session'])->group(function () {
     });
 
     Route::get('/barcode/{barang:id_barang}', [BarcodeController::class, 'index'])->name('barcode.index');
+
+        // Kunjungan Toko
+        Route::get('/kunjungan-toko', [KunjunganTokoController::class, 'index'])->name('kunjungan.index');
+        Route::post('/kunjungan-toko/store', [KunjunganTokoController::class, 'store'])->name('kunjungan.store');
+        Route::get('/kunjungan-toko/{toko}/barcode', [KunjunganTokoController::class, 'barcode'])->name('kunjungan.barcode');
+        Route::post('/kunjungan-toko/lookup', [KunjunganTokoController::class, 'lookup'])->name('kunjungan.lookup');
+        Route::post('/kunjungan-toko/check', [KunjunganTokoController::class, 'check'])->name('kunjungan.check');
 });
 
 Route::middleware(['auth', 'check.session', 'role:admin'])

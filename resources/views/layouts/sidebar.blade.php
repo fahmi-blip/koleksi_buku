@@ -72,6 +72,15 @@
       </a>
     </li>
     @endif
+
+    @if(Auth::user()->role == 'admin')
+    <li class="nav-item {{ Request::is('kunjungan-toko*') ? 'active' : '' }}">
+      <a class="nav-link" href="{{ route('kunjungan.index') }}">
+        <span class="menu-title">Kunjungan Toko</span>
+        <i class="mdi mdi-map-marker-radius menu-icon"></i>
+      </a>
+    </li>
+    @endif
     
     {{-- Menu Barang --}}
     @if(Auth::user()->role == 'admin')
@@ -133,6 +142,12 @@
     <li class="nav-item {{ Request::is('select*') ? 'active' : '' }}">
       <a class="nav-link" href="{{ route('latihan.select') }}">
         <span class="menu-title">Select</span>
+        <i class="mdi mdi-tag-multiple menu-icon"></i>
+      </a>
+    </li>
+    <li class="nav-item {{ Request::is('kantin*') ? 'active' : '' }}">
+      <a class="nav-link" href="{{ route('kantin.order') }}">
+        <span class="menu-title">Kantin</span>
         <i class="mdi mdi-tag-multiple menu-icon"></i>
       </a>
     </li>

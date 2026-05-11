@@ -130,18 +130,20 @@
                             <canvas id="canvas" style="display:none;"></canvas>
                         </div>
                         <div class="mt-2 text-muted small">Pastikan browser punya izin kamera dan arahkan barcode ke kamera.</div>
-                        <div class="mt-2">
-                            <label class="form-label small">Pilih Kamera</label>
-                            <select id="cameraSelect" class="form-select form-select-sm"></select>
-                        </div>
-                        <div class="mt-2">
-                            <label class="form-label small">Atau unggah foto barcode</label>
-                            <input id="fileInputScan" type="file" accept="image/*" class="form-control form-control-sm" />
-                            <img id="filePreview" src="" style="max-width:100%;margin-top:8px;display:none;border-radius:6px;" />
-                        </div>
                         <div class="mt-2 text-muted small">Status: <span id="scannerStatus">Siap</span></div>
                     </div>
                     <div class="col-md-5">
+                        <div class="row g-2 mb-3">
+                            <div class="col-sm-6">
+                                <label class="form-label small mb-1">Pilih Kamera</label>
+                                <select id="cameraSelect" class="form-select form-select-sm"></select>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label small mb-1">Unggah Foto Barcode</label>
+                                <input id="fileInputScan" type="file" accept="image/*" class="form-control form-control-sm" />
+                            </div>
+                        </div>
+                        <img id="filePreview" src="" style="width:100%;max-height:150px;object-fit:contain;margin-bottom:10px;display:none;border-radius:6px;border:1px solid #e3e8ef;padding:4px;background:#fff;" />
                         <div class="mb-2">
                             <strong>Hasil Scan</strong>
                         </div>
@@ -547,7 +549,8 @@ document.addEventListener('DOMContentLoaded', function () {
     async function handleScannedCode(code) {
         playBeep();
         setResult(code, 'Mencari…', '');
- 
+        setStatus('Menghubungi server…');
+
         try {
             const res  = await fetch('{{ route('barcode-scanner.lookup') }}', {
                 method:  'POST',
@@ -557,8 +560,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: JSON.stringify({ barcode: code }),
             });
+            
+            console.log('[API] Response status:', res.status);
             const json = await res.json();
- 
+            console.log('[API] Response data:', json);
+
             if (json.success) {
                 setResult(
                     json.data.id_barang,
@@ -567,13 +573,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
                 setStatus('✓ Barang ditemukan');
             } else {
-                setResult(code, '⚠ Barang tidak ditemukan', '');
-                setStatus('Barang tidak ditemukan untuk kode: ' + code);
+                const errorMsg = json.message || 'Barang tidak ditemukan untuk kode: ' + code;
+                setResult(code, '⚠ ' + errorMsg, '');
+                setStatus('⚠ ' + errorMsg);
+                console.warn('[API] Lookup failed:', json.message);
             }
         } catch (e) {
-            console.error('Fetch error:', e);
-            setResult(code, '✗ Gagal menghubungi server', '');
-            setStatus('Error jaringan');
+            console.error('[API] Fetch error:', e);
+            const errorMsg = e.message || 'Gagal menghubungi server';
+            setResult(code, '✗ ' + errorMsg, '');
+            setStatus('✗ Error: ' + errorMsg);
         }
     }
  
@@ -696,21 +705,23 @@ document.addEventListener('DOMContentLoaded', function () {
  
     // ── Event: input manual ───────────────────────────────────────────────
  
-    manualBtn.addEventListener('click', async function () {
-        const code = (manualInput.value || '').trim();
-        if (!code) { alert('Masukkan kode barcode terlebih dahulu'); return; }
-        stopScanner();
-        await handleScannedCode(code);
-    });
- 
-    manualInput.addEventListener('keydown', async function (e) {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        const code = this.value.trim();
-        if (!code) return;
-        await stopScanner();
-        await handleScannedCode(code);
-    });
+    if (manualBtn && manualInput) {
+        manualBtn.addEventListener('click', async function () {
+            const code = (manualInput.value || '').trim();
+            if (!code) { alert('Masukkan kode barcode terlebih dahulu'); return; }
+            stopScanner();
+            await handleScannedCode(code);
+        });
+
+        manualInput.addEventListener('keydown', async function (e) {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            const code = this.value.trim();
+            if (!code) return;
+            await stopScanner();
+            await handleScannedCode(code);
+        });
+    }
  
 });
 </script>

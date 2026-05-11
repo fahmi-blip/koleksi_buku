@@ -50,7 +50,7 @@ class AdminVendorController extends Controller
     public function destroy(Vendor $vendor)
     {
         try {
-            $vendor->delete();
+            Vendor::destroy($vendor->idvendor);
 
             return redirect()->route('admin.vendor.index')->with('success', 'Vendor berhasil dihapus.');
         } catch (QueryException $e) {

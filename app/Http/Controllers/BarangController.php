@@ -66,7 +66,7 @@ class BarangController extends Controller
             return redirect()->route('barang.index')->with('error', 'Pilih minimal satu barang untuk dicetak.');
         }
 
-        $data_barang = Barang::whereIn('id_barang', $ids)->get();
+        $data_barang = Barang::whereHas('id_barang', $ids)->get();
         return view('pages.barang.cetak', compact('data_barang', 'ids'));
     }
 
@@ -84,7 +84,7 @@ class BarangController extends Controller
         $startY   = (int) $request->input('start_y');
         $quantity = $request->input('quantity', []);   
 
-        $barangList = Barang::whereIn('id_barang', $ids)->get()->keyBy('id_barang');
+        $barangList = Barang::whereHas('id_barang', $ids)->get()->keyBy('id_barang');
 
         $labels = [];
         foreach ($ids as $id) {

@@ -12,7 +12,7 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        $customers = Customer::latest()->get();
+        $customers = Customer::query()->orderByDesc('idcustomer')->get();
         $mode = $request->query('mode', 'blob');
 
         if (! in_array($mode, ['blob', 'file'], true)) {
