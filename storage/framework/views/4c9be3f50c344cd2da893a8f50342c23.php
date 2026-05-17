@@ -1,6 +1,6 @@
-@extends('layouts.main')
 
-@section('content')
+
+<?php $__env->startSection('content'); ?>
     <div class="page-header">
       <h3 class="page-title">
         <span class="text-white page-title-icon bg-gradient-primary me-2">
@@ -15,7 +15,7 @@
                     <img src="assets/images/dashboard/circle.svg" class="card-img-absolute" alt="circle-image" />
                     <h4 class="mb-3 font-weight-normal">Banyak Buku <i class="mdi mdi-book mdi-24px float-end"></i>
                     </h4>
-                    <h2 class="mb-5">{{ $bukuCount ?? 0 }}</h2>
+                    <h2 class="mb-5"><?php echo e($bukuCount ?? 0); ?></h2>
                     <h6 class="card-text">Total buku dalam katalog</h6>
                   </div>
                 </div>
@@ -26,7 +26,7 @@
                     <img src="assets/images/dashboard/circle.svg" class="card-img-absolute" alt="circle-image" />
                     <h4 class="mb-3 font-weight-normal">Banyak Barang <i class="mdi mdi-package-variant mdi-24px float-end"></i>
                     </h4>
-                    <h2 class="mb-5">{{ $barangCount ?? 0 }}</h2>
+                    <h2 class="mb-5"><?php echo e($barangCount ?? 0); ?></h2>
                     <h6 class="card-text">Total barang tersedia</h6>
                   </div>
                 </div>
@@ -37,7 +37,7 @@
                     <img src="assets/images/dashboard/circle.svg" class="card-img-absolute" alt="circle-image" />
                     <h4 class="mb-3 font-weight-normal">Banyak Vendor <i class="mdi mdi-store mdi-24px float-end"></i>
                     </h4>
-                    <h2 class="mb-5">{{ $vendorCount ?? 0 }}</h2>
+                    <h2 class="mb-5"><?php echo e($vendorCount ?? 0); ?></h2>
                     <h6 class="card-text">Total vendor terdaftar</h6>
                   </div>
                 </div>
@@ -135,4 +135,5 @@
                 </div>
               </div>
             </div>
-@endsection
+<?php $__env->stopSection(); ?>
+<?php echo $__env->make('layouts.main', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\laragon\www\koleksi-buku\resources\views/pages/home.blade.php ENDPATH**/ ?>

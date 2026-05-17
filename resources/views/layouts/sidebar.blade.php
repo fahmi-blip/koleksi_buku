@@ -25,6 +25,15 @@
     </li>
     @endif
 
+    @if(Auth::user()->role == 'admin')
+    <li class="nav-item {{ Request::is('antrian*') ? 'active' : '' }}">
+      <a class="nav-link" href="{{ route('antrian.admin') }}">
+        <span class="menu-title">Manajemen Antrian</span>
+        <i class="mdi mdi-home menu-icon"></i>
+      </a>
+    </li>
+    @endif
+    
     {{-- Menu Kategori --}}
     @if(Auth::user()->role == 'admin')
     <li class="nav-item {{ Request::is('kategori*') ? 'active' : '' }}">
@@ -145,6 +154,9 @@
         <i class="mdi mdi-tag-multiple menu-icon"></i>
       </a>
     </li>
+    @endif
+    
+    @if(Auth::user()->role == 'admin')
     <li class="nav-item {{ Request::is('kantin*') ? 'active' : '' }}">
       <a class="nav-link" href="{{ route('kantin.order') }}">
         <span class="menu-title">Kantin</span>
@@ -152,6 +164,8 @@
       </a>
     </li>
     @endif
+    
+    
     @endauth
   </ul>
 </nav>
