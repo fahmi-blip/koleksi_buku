@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Log;
 
 class AntrianController extends Controller
 {
+    private const CACHE_SNAPSHOT_KEY = 'antrian.queue.snapshot';
+    private const CACHE_VERSION_KEY = 'antrian.queue.version';
+
     private function buildQueueState(): array
     {
         $antrians = DB::table('antrians')->orderBy('nomor')->get()->map(function ($antrian) {
@@ -28,6 +31,53 @@ class AntrianController extends Controller
         return [
             'antrians' => $antrians,
             'called' => $called,
+        ];
+    }
+
+    private function cacheQueueState(?array $state = null): array
+    {
+        $state = $state ?? $this->buildQueueState();
+
+        Cache::forever(self::CACHE_SNAPSHOT_KEY, $state);
+        Cache::forever(self::CACHE_VERSION_KEY, (string) microtime(true));
+
+        return $state;
+    }
+
+    private function getCachedQueueState(): array
+    {
+        $state = Cache::get(self::CACHE_SNAPSHOT_KEY);
+
+        if (is_array($state) && array_key_exists('antrians', $state) && array_key_exists('called', $state)) {
+            return $state;
+        }
+
+        return $this->cacheQueueState();
+    }
+
+    private function getQueueVersion(): string
+    {
+        $version = Cache::get(self::CACHE_VERSION_KEY);
+
+        if (is_string($version) && $version !== '') {
+            return $version;
+        }
+
+        $this->cacheQueueState();
+
+        $version = Cache::get(self::CACHE_VERSION_KEY);
+
+        return is_string($version) && $version !== '' ? $version : (string) microtime(true);
+    }
+
+    private function getQueuePayload(bool $refresh = false): array
+    {
+        $state = $refresh ? $this->cacheQueueState() : $this->getCachedQueueState();
+
+        return [
+            'antrians' => $state['antrians'],
+            'called' => $state['called'],
+            'version' => $this->getQueueVersion(),
         ];
     }
 
@@ -97,7 +147,13 @@ class AntrianController extends Controller
 
     public function guest()
     {
-        return view('antrian.guest');
+        $usePolling = PHP_SAPI === 'cli-server';
+        $state = $this->getQueuePayload();
+        $antrians = $state['antrians'];
+        $called = $state['called'];
+        $queueVersion = $state['version'];
+
+        return view('antrian.guest', compact('usePolling', 'queueVersion', 'antrians', 'called'));
     }
 
     public function store(Request $request)
@@ -121,7 +177,9 @@ class AntrianController extends Controller
             Log::info('Antrian created', ['id' => $antrian->id, 'nomor' => $nomor]);
         } catch (\Throwable $e) {}
 
-        Cache::put('antrian_last_update', time());
+        $this->cacheQueueState();
+
+        try { Log::info('Antrian store: cache snapshot updated', ['version' => Cache::get(self::CACHE_VERSION_KEY)]); } catch (\Throwable $_) {}
 
         return response()->json([
             'success' => true,
@@ -140,20 +198,24 @@ class AntrianController extends Controller
 
     public function admin()
     {
-        $state = $this->buildQueueState();
+        $state = $this->getQueuePayload();
         $antrians = $state['antrians'];
         $called = $state['called'];
-        return view('antrian.admin', compact('antrians', 'called'));
+        $queueVersion = $state['version'];
+        $usePolling = PHP_SAPI === 'cli-server';
+
+        return view('antrian.admin', compact('antrians', 'called', 'usePolling', 'queueVersion'));
     }
 
     public function snapshot()
     {
-        $state = $this->buildQueueState();
+        $state = $this->getQueuePayload();
 
         return response()->json([
             'success' => true,
             'antrians' => $state['antrians'],
             'called' => $state['called'],
+            'version' => $state['version'],
         ]);
     }
 
@@ -169,11 +231,13 @@ class AntrianController extends Controller
         $called = $this->normalizeAntrianRow($called);
 
         try { Log::info('Antrian called', ['id' => $antrian->id]); } catch (\Throwable $e) {}
-        Cache::put('antrian_last_update', time());
+        $state = $this->cacheQueueState();
 
         return response()->json([
             'success' => true,
             'called' => $called,
+            'antrians' => $state['antrians'],
+            'version' => Cache::get(self::CACHE_VERSION_KEY),
         ]);
     }
 
@@ -184,8 +248,15 @@ class AntrianController extends Controller
             'updated_at' => now()->toDateTimeString(),
         ]);
         try { Log::info('Antrian finished', ['id' => $antrian->id]); } catch (\Throwable $e) {}
-        Cache::put('antrian_last_update', time());
-        return response()->json(['success' => true]);
+        $state = $this->cacheQueueState();
+        try { Log::info('Antrian finish: cache snapshot updated', ['version' => Cache::get(self::CACHE_VERSION_KEY)]); } catch (\Throwable $_) {}
+
+        return response()->json([
+            'success' => true,
+            'antrians' => $state['antrians'],
+            'called' => $state['called'],
+            'version' => Cache::get(self::CACHE_VERSION_KEY),
+        ]);
     }
 
     public function late(Request $request, Antrian $antrian)
@@ -195,12 +266,24 @@ class AntrianController extends Controller
             'updated_at' => now()->toDateTimeString(),
         ]);
         try { Log::info('Antrian late', ['id' => $antrian->id]); } catch (\Throwable $e) {}
-        Cache::put('antrian_last_update', time());
-        return response()->json(['success' => true]);
+        $state = $this->cacheQueueState();
+        try { Log::info('Antrian late: cache snapshot updated', ['version' => Cache::get(self::CACHE_VERSION_KEY)]); } catch (\Throwable $_) {}
+
+        return response()->json([
+            'success' => true,
+            'antrians' => $state['antrians'],
+            'called' => $state['called'],
+            'version' => Cache::get(self::CACHE_VERSION_KEY),
+        ]);
     }
 
     public function sse()
     {
+        // Sesuaikan session file lock agar tab lain tidak hang ketika request POST/GET lain dilakukan.
+        if (request()->hasSession()) {
+            request()->session()->save();
+        }
+
         return response()->stream(function () {
             @set_time_limit(0);
             @ini_set('output_buffering', 'off');
@@ -212,61 +295,56 @@ class AntrianController extends Controller
 
             ignore_user_abort(true);
 
-            $lastState = null;
-            $lastCache = Cache::get('antrian_last_update', 0);
+            $lastVersion = null;
             $lastPingAt = 0;
 
+            $initialState = $this->getQueuePayload();
+            $initialPayload = json_encode([
+                'antrians' => $initialState['antrians'],
+                'called' => $initialState['called'],
+                'version' => $initialState['version'],
+            ]);
+
+            if ($initialPayload !== false) {
+                echo "event: queue-update\n";
+                echo 'data: ' . $initialPayload . "\n\n";
+                @ob_flush();
+                flush();
+                $lastVersion = $initialState['version'];
+            }
+
             while (!connection_aborted()) {
-                // If first connection, send initial snapshot immediately
-                if ($lastState === null) {
-                    try {
-                        $state = $this->buildQueueState();
-                        $payload = json_encode($state);
+                try {
+                    $version = $this->getQueueVersion();
+
+                    if ($version !== $lastVersion) {
+                        $state = $this->getQueuePayload();
+                        $payload = json_encode([
+                            'antrians' => $state['antrians'],
+                            'called' => $state['called'],
+                            'version' => $state['version'],
+                        ]);
+
                         if ($payload !== false) {
                             echo "event: queue-update\n";
                             echo 'data: ' . $payload . "\n\n";
                             @ob_flush();
                             flush();
-                            try { Log::info('SSE: sent queue-update', ['initial' => true, 'hash' => md5($payload), 'length' => strlen($payload)]); } catch (\Throwable $e) {}
-                            $lastState = $payload;
-                            $lastCache = Cache::get('antrian_last_update', $lastCache);
+                            try { Log::info('SSE: sent queue-update', ['version' => $version, 'length' => strlen($payload)]); } catch (\Throwable $e) {}
+                            $lastVersion = $version;
                         }
-                    } catch (\Throwable $e) {
-                        try { Log::error('SSE: buildQueueState failed (initial)', ['message' => $e->getMessage()]); } catch (\Throwable $_) {}
-                        $fallback = json_encode(['antrians' => [], 'called' => null, 'error' => true]);
-                        echo "event: queue-update\n";
-                        echo 'data: ' . $fallback . "\n\n";
-                        @ob_flush();
-                        flush();
-                        $lastState = $fallback;
                     }
-                } else {
-                    // Check cache flag to avoid hitting DB each loop
-                    $currentCache = Cache::get('antrian_last_update', 0);
-                    if ($currentCache !== $lastCache) {
-                        try {
-                            $state = $this->buildQueueState();
-                            $payload = json_encode($state);
-                            if ($payload !== false && $payload !== $lastState) {
-                                echo "event: queue-update\n";
-                                echo 'data: ' . $payload . "\n\n";
-                                @ob_flush();
-                                flush();
-                                try { Log::info('SSE: sent queue-update', ['hash' => md5($payload), 'length' => strlen($payload), 'cache' => $currentCache]); } catch (\Throwable $e) {}
-                                $lastState = $payload;
-                            }
-                        } catch (\Throwable $e) {
-                            try { Log::error('SSE: buildQueueState failed', ['message' => $e->getMessage()]); } catch (\Throwable $_) {}
-                            $fallback = json_encode(['antrians' => [], 'called' => null, 'error' => true]);
-                            if ($fallback !== $lastState) {
-                                echo "event: queue-update\n";
-                                echo 'data: ' . $fallback . "\n\n";
-                                @ob_flush();
-                                flush();
-                                $lastState = $fallback;
-                            }
+                } catch (\Throwable $e) {
+                    try { Log::error('SSE: buildQueueState failed', ['message' => $e->getMessage()]); } catch (\Throwable $_) {}
+                    $fallback = json_encode(['antrians' => [], 'called' => null, 'error' => true]);
+                    if ($fallback !== false) {
+                        if ($lastVersion !== 'error') {
+                            echo "event: queue-update\n";
+                            echo 'data: ' . $fallback . "\n\n";
+                            @ob_flush();
+                            flush();
+                            $lastVersion = 'error';
                         }
-                        $lastCache = $currentCache;
                     }
                 }
 
@@ -287,4 +365,15 @@ class AntrianController extends Controller
             'X-Accel-Buffering' => 'no',
         ]);
     }
+    public function papan()
+{
+        $state = $this->getQueuePayload();
+        $usePolling = PHP_SAPI === 'cli-server';
+    return view('antrian.papan', [
+        'antrians' => $state['antrians'],
+        'called'   => $state['called'],
+            'usePolling' => $usePolling,
+            'queueVersion' => $state['version'],
+    ]);
+}
 }

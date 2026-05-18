@@ -5,8 +5,7 @@
     <div class="flex-wrap gap-2 mb-4 d-flex justify-content-between align-items-center">
         <div>
             <h3 class="mb-1 fw-bold">Admin - Manajemen Antrian</h3>
-            <div class="text-muted">Dashboard antrian dengan tampilan ringan seperti halaman utama project</div>
-        </div>
+            </div>
         <div id="alerts"></div>
     </div>
 
@@ -17,8 +16,8 @@
                     <div class="mb-2 text-uppercase text-muted small fw-semibold">Nomor sedang dipanggil</div>
                     <div id="currentCalledNumber" class="mb-2 display-3 fw-bold text-primary" style="line-height:0.95;">---</div>
                     <div id="currentCalledName" class="mb-2 h3 fw-semibold">Belum ada antrian dipanggil</div>
-                    <div id="currentCalledService" class="text-muted mb-3">-</div>
-                    <div class="d-flex gap-2">
+                    <div id="currentCalledService" class="mb-3 text-muted">-</div>
+                    <div class="gap-2 d-flex">
                         <button id="btnCallCurrent" class="btn btn-sm btn-warning btn-call-current" disabled>Panggil Ulang</button>
                         <button id="btnFinishCurrent" class="btn btn-sm btn-success btn-finish-current" disabled>Selesai</button>
                         <button id="btnLateCurrent" class="btn btn-sm btn-danger btn-late-current" disabled>Terlambat</button>
@@ -136,6 +135,10 @@ const COUNTDOWN_DURATION = 120; // 2 minutes
 
 const initialAntrians = <?php echo json_encode($antrians, 15, 512) ?>;
 const initialCalled = <?php echo json_encode($called, 15, 512) ?>;
+const initialQueueVersion = <?php echo json_encode($queueVersion ?? null, 15, 512) ?>;
+const usePolling = <?php echo json_encode($usePolling ?? false, 15, 512) ?>;
+let pollingTimer = null;
+let lastQueueVersion = null;
 
 function formatCountdown(seconds) {
     const mins = Math.floor(seconds / 60);
@@ -170,12 +173,9 @@ function startCountdown(antrianId) {
             document.getElementById('countdownDisplay').textContent = '-';
             
             // Auto-late
-            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             try {
-                await fetch('/antrian/' + currentCalledId + '/late', {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': token }
-                });
+                const targetId = currentCalledId;
+                await sendQueueAction('/antrian/' + targetId + '/late', { method: 'POST' });
                 console.log('Status otomatis diubah ke terlambat');
             } catch (err) {
                 console.warn('Auto-late gagal', err);
@@ -194,7 +194,32 @@ function stopCountdown() {
     document.getElementById('countdownDisplay').textContent = '-';
 }
 
+async function sendQueueAction(url, options = {}) {
+    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const response = await fetch(url, {
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'Accept': 'application/json',
+            ...(options.headers || {}),
+        },
+        ...options,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Gagal');
+    }
+
+    applyActionResult(data);
+    return data;
+}
+
 function updateDashboard(payload){
+    if (payload && payload.version && payload.version === lastQueueVersion) {
+        return;
+    }
+
     const data = payload.antrians || [];
     const counts = data.reduce((acc, item) => {
         acc[item.status] = (acc[item.status] || 0) + 1;
@@ -230,11 +255,27 @@ function updateDashboard(payload){
         document.getElementById('btnLateCurrent').disabled = true;
         stopCountdown();
     }
+
+    if (payload && payload.version) {
+        lastQueueVersion = payload.version;
+    }
 }
 
-function applyQueueState(payload) {
+function applyQueueState(payload, force = false) {
+    if (!force && payload && payload.version && payload.version === lastQueueVersion) {
+        return;
+    }
+
     updateDashboard(payload);
     updateTable(payload.antrians || []);
+}
+
+function applyActionResult(payload) {
+    if (!payload) return;
+
+    if (payload.antrians || payload.called) {
+        applyQueueState(payload);
+    }
 }
 
 function updateTable(data){
@@ -263,9 +304,29 @@ function connectSSE() {
         }
     });
 
-    antrianSource.onerror = function() {
-        console.warn('Koneksi SSE admin terganggu, browser akan mencoba menyambung ulang otomatis.');
-    };
+    antrianSource.onopen = function() { console.info('SSE admin: connection opened'); };
+    antrianSource.onerror = function(e) { console.warn('Koneksi SSE admin terganggu, browser akan mencoba menyambung ulang otomatis.', e); };
+}
+
+async function fetchQueueSnapshot() {
+    try {
+        const res = await fetch("<?php echo e(route('antrian.snapshot')); ?>", { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return;
+
+        const payload = await res.json();
+        applyQueueState(payload);
+    } catch (err) {
+        console.warn('Polling admin gagal', err);
+    }
+}
+
+function connectPolling() {
+    if (pollingTimer) {
+        clearInterval(pollingTimer);
+    }
+
+    fetchQueueSnapshot();
+    pollingTimer = setInterval(fetchQueueSnapshot, 1000);
 }
 
 document.addEventListener('click', async function(e){
@@ -273,58 +334,77 @@ document.addEventListener('click', async function(e){
     if (e.target.matches('#btnCallCurrent')){
         if (!currentCalledId) return;
         if (!confirm('Panggil ulang nomor ini?')) return;
-        const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        const res = await fetch('/antrian/'+currentCalledId+'/call', { method:'POST', headers:{'X-CSRF-TOKEN':token, 'Accept':'application/json'}});
-        const data = await res.json();
-        if (!res.ok){ alert(data.message || 'Gagal'); return; }
+        try {
+            await sendQueueAction('/antrian/'+currentCalledId+'/call', { method:'POST' });
+        } catch (err) {
+            alert(err.message || 'Gagal');
+            return;
+        }
         startCountdown(currentCalledId);
     }
     // Button Selesai di card informasi
     if (e.target.matches('#btnFinishCurrent')){
         if (!currentCalledId) return;
-        const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        await fetch('/antrian/'+currentCalledId+'/finish',{method:'POST',headers:{'X-CSRF-TOKEN':token}});
-        stopCountdown();
+        try {
+            await sendQueueAction('/antrian/'+currentCalledId+'/finish',{method:'POST'});
+        } catch (err) {
+            alert(err.message || 'Gagal');
+            return;
+        }
     }
     // Button Terlambat di card informasi
     if (e.target.matches('#btnLateCurrent')){
         if (!currentCalledId) return;
-        const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        await fetch('/antrian/'+currentCalledId+'/late',{method:'POST',headers:{'X-CSRF-TOKEN':token}});
-        stopCountdown();
-    }
-    if (e.target.matches('.btn-warning')){
-        const tr = e.target.closest('tr'); const id = tr.dataset.id;
-        if (!confirm('Panggil nomor ini?')) return;
-        const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        const res = await fetch('/antrian/'+id+'/call', { method:'POST', headers:{'X-CSRF-TOKEN':token, 'Accept':'application/json'}});
-        const data = await res.json();
-        if (!res.ok){ alert(data.message || 'Gagal'); return; }
-        startCountdown(id); // Start countdown setelah panggil
-    }
-    if (e.target.matches('.btn-finish')){
-        const tr = e.target.closest('tr'); const id = tr.dataset.id;
-        const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        await fetch('/antrian/'+id+'/finish',{method:'POST',headers:{'X-CSRF-TOKEN':token}});
-        if (currentCalledId === parseInt(id)) {
-            stopCountdown(); // Stop countdown ketika selesai
+        try {
+            await sendQueueAction('/antrian/'+currentCalledId+'/late',{method:'POST'});
+        } catch (err) {
+            alert(err.message || 'Gagal');
+            return;
         }
     }
-    if (e.target.matches('.btn-late')){
+    if (e.target.matches('#tblAntrian .btn-warning')){
         const tr = e.target.closest('tr'); const id = tr.dataset.id;
-        const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        await fetch('/antrian/'+id+'/late',{method:'POST',headers:{'X-CSRF-TOKEN':token}});
-        if (currentCalledId === parseInt(id)) {
-            stopCountdown(); // Stop countdown ketika terlambat
+        if (!confirm('Panggil nomor ini?')) return;
+        try {
+            await sendQueueAction('/antrian/'+id+'/call', { method:'POST' });
+        } catch (err) {
+            alert(err.message || 'Gagal');
+            return;
+        }
+        startCountdown(id); // Start countdown setelah panggil
+    }
+    if (e.target.matches('#tblAntrian .btn-finish')){
+        const tr = e.target.closest('tr'); const id = tr.dataset.id;
+        try {
+            await sendQueueAction('/antrian/'+id+'/finish',{method:'POST'});
+        } catch (err) {
+            alert(err.message || 'Gagal');
+            return;
+        }
+    }
+    if (e.target.matches('#tblAntrian .btn-late')){
+        const tr = e.target.closest('tr'); const id = tr.dataset.id;
+        try {
+            await sendQueueAction('/antrian/'+id+'/late',{method:'POST'});
+        } catch (err) {
+            alert(err.message || 'Gagal');
+            return;
         }
     }
 });
 
-connectSSE();
-applyQueueState({ antrians: initialAntrians, called: initialCalled });
+if (usePolling) {
+    connectPolling();
+} else {
+    connectSSE();
+}
+applyQueueState({ antrians: initialAntrians, called: initialCalled, version: initialQueueVersion }, true);
 window.addEventListener('beforeunload', function() {
     if (antrianSource) {
         antrianSource.close();
+    }
+    if (pollingTimer) {
+        clearInterval(pollingTimer);
     }
 });
 </script>

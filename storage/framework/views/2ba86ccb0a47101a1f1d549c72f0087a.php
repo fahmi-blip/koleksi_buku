@@ -17,11 +17,11 @@
         </div>
 
         <div class="card" style="border:1px solid var(--border); background:rgba(31,41,55,0.4); border-radius:20px;">
-            <div class="card-header p-4 border-0" style="background:rgba(51,65,85,0.5); border-radius:20px 20px 0 0;">
+            <div class="p-4 border-0 card-header" style="background:rgba(51,65,85,0.5); border-radius:20px 20px 0 0;">
                 <div style="font-size:0.85rem; color:var(--muted); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:4px;">Antrian</div>
                 <h5 class="mb-0" style="color:var(--text); font-weight:700;">Pasien Menunggu</h5>
             </div>
-            <div class="card-body p-0">
+            <div class="p-0 card-body">
                 <div id="waitingList" style="max-height:400px; overflow-y:auto;">
                     <div style="padding:24px; text-align:center; color:var(--muted); font-size:0.95rem;">Tidak ada antrian menunggu</div>
                 </div>
@@ -39,6 +39,13 @@ let lastAnnouncement = '';
 let antrianSource = null;
 const notifAudio = document.getElementById('notifAudio');
 let preferredVoice = null;
+const initialAntrians = <?php echo json_encode($antrians, 15, 512) ?>;
+const initialCalled = <?php echo json_encode($called, 15, 512) ?>;
+const initialQueueVersion = <?php echo json_encode($queueVersion ?? null, 15, 512) ?>;
+const usePolling = <?php echo json_encode($usePolling ?? false, 15, 512) ?>;
+let pollingTimer = null;
+let lastQueueVersion = null;
+
 
 function pickFemaleVoice() {
     if (!('speechSynthesis' in window)) return null;
@@ -102,7 +109,47 @@ function speakText(text) {
     }
 }
 
-function announceText(text) {
+function playNotificationSound() {
+    return new Promise((resolve) => {
+        if (!notifAudio) {
+            resolve(false);
+            return;
+        }
+
+        try {
+            notifAudio.pause();
+            notifAudio.currentTime = 0;
+            if (typeof notifAudio.load === 'function') {
+                notifAudio.load();
+            }
+        } catch (err) {}
+
+        let settled = false;
+
+        const finish = (played) => {
+            if (settled) return;
+            settled = true;
+            notifAudio.onended = null;
+            notifAudio.onerror = null;
+            resolve(played);
+        };
+
+        notifAudio.onended = function() {
+            finish(true);
+        };
+
+        notifAudio.onerror = function() {
+            finish(false);
+        };
+
+        const playResult = notifAudio.play();
+        if (playResult && typeof playResult.catch === 'function') {
+            playResult.then(() => {}).catch(() => finish(false));
+        }
+    });
+}
+
+async function announceText(text) {
     const message = text || '';
     if (!message) return;
 
@@ -111,21 +158,13 @@ function announceText(text) {
         return;
     }
 
-    try {
-        notifAudio.pause();
-        notifAudio.currentTime = 0;
-    } catch (err) {}
-
-    notifAudio.onended = function() {
+    const played = await playNotificationSound();
+    if (!played) {
         speakText(message);
-    };
-
-    const playResult = notifAudio.play();
-    if (playResult && typeof playResult.catch === 'function') {
-        playResult.catch(function() {
-            speakText(message);
-        });
+        return;
     }
+
+    speakText(message);
 }
 
 function renderWaitingList(antrians) {
@@ -157,8 +196,12 @@ function renderWaitingList(antrians) {
     container.innerHTML = html;
 }
 
-function updatePapanUI(payload) {
+function updatePapanUI(payload, force = false) {
     if (!payload) return;
+
+    if (!force && payload.version && payload.version === lastQueueVersion) {
+        return;
+    }
 
     const called = payload.called || null;
     const nomorEl = document.getElementById('nomor');
@@ -190,6 +233,10 @@ function updatePapanUI(payload) {
     }
 
     renderWaitingList(payload.antrians || []);
+
+    if (payload.version) {
+        lastQueueVersion = payload.version;
+    }
 }
 
 function connectSSE() {
@@ -198,7 +245,6 @@ function connectSSE() {
     }
 
     antrianSource = new EventSource("<?php echo e(route('antrian.sse')); ?>");
-
     antrianSource.addEventListener('queue-update', function(event) {
         try {
             const payload = JSON.parse(event.data);
@@ -208,15 +254,48 @@ function connectSSE() {
         }
     });
 
-    antrianSource.onerror = function() {
-        console.warn('Koneksi SSE papan terganggu, browser akan reconnect otomatis.');
+    antrianSource.onopen = function() {
+        console.info('SSE papan: connection opened');
+    };
+
+    antrianSource.onerror = function(e) {
+        console.warn('Koneksi SSE papan terganggu, browser akan reconnect otomatis.', e);
     };
 }
 
-connectSSE();
+async function fetchQueueSnapshot() {
+    try {
+        const res = await fetch("<?php echo e(route('antrian.snapshot')); ?>", { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return;
+
+        const payload = await res.json();
+        updatePapanUI(payload);
+    } catch (err) {
+        console.warn('Polling papan gagal', err);
+    }
+}
+
+function connectPolling() {
+    if (pollingTimer) {
+        clearInterval(pollingTimer);
+    }
+
+    fetchQueueSnapshot();
+    pollingTimer = setInterval(fetchQueueSnapshot, 1000);
+}
+
+if (usePolling) {
+    connectPolling();
+} else {
+    connectSSE();
+}
+updatePapanUI({ antrians: initialAntrians, called: initialCalled, version: initialQueueVersion }, true);
 window.addEventListener('beforeunload', function() {
     if (antrianSource) {
         antrianSource.close();
+    }
+    if (pollingTimer) {
+        clearInterval(pollingTimer);
     }
 });
 </script>

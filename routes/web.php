@@ -18,6 +18,9 @@ use App\Http\Controllers\KunjunganTokoController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\PdfGenerator;
 use App\Http\Controllers\AntrianController;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 
 Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
@@ -130,21 +133,29 @@ require __DIR__.'/auth.php';
 // Simple queue (antrian) routes
 
 Route::get('/antrian/guest', [AntrianController::class, 'guest'])->name('antrian.guest');
-Route::post('/antrian/store', [AntrianController::class, 'store'])->name('antrian.store');
+// Short aliases to match test steps
+Route::get('/guest', [AntrianController::class, 'guest']);
 Route::get('/antrian/ticket/{antrian}', [AntrianController::class, 'ticket'])->name('antrian.ticket');
-Route::get('/papan-antrian', function(){ return view('antrian.papan'); })->name('antrian.papan');
+Route::post('/antrian/store', [AntrianController::class, 'store'])
+    ->name('antrian.store');
+Route::get('/papan-antrian', [AntrianController::class, 'papan'])->name('antrian.papan');
+Route::get('/papan', [AntrianController::class, 'papan']);
 Route::get('/antrian/snapshot', [AntrianController::class, 'snapshot'])->name('antrian.snapshot');
 
 Route::middleware(['auth','role:admin'])->group(function(){
     Route::get('/admin/antrian', [AntrianController::class, 'admin'])->name('antrian.admin');
+    Route::get('/admin', [AntrianController::class, 'admin']);
     Route::post('/antrian/{antrian}/call', [AntrianController::class, 'call'])->name('antrian.call');
     Route::post('/antrian/{antrian}/finish', [AntrianController::class, 'finish'])->name('antrian.finish');
     Route::post('/antrian/{antrian}/late', [AntrianController::class, 'late'])->name('antrian.late');
-});
-
-use Illuminate\Session\Middleware\StartSession;
+    });
+    
 
 // SSE endpoint should be stateless to avoid session file locking for long-lived connections
 Route::get('/sse/antrian', [AntrianController::class, 'sse'])
     ->name('antrian.sse')
-    ->withoutMiddleware([StartSession::class]);
+    ->withoutMiddleware([
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        VerifyCsrfToken::class,
+    ]);

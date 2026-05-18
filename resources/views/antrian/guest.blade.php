@@ -32,14 +32,6 @@
                 </form>
             </div>
         </div>
-
-        <div class="mt-3 content card">
-            <div class="card-body" style="display:grid; gap:8px;">
-                <div style="font-size:0.8rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted);">Realtime antrian</div>
-                <div><strong>Sedang dipanggil:</strong> <span id="guestCurrentCalled">-</span></div>
-                <div><strong>Total menunggu:</strong> <span id="guestWaitingCount">0</span></div>
-            </div>
-        </div>
     </div>
 </section>
 
@@ -120,6 +112,11 @@
 let antrianPopupModal = null;
 let currentPopupData = null;
 let guestAntrianSource = null;
+const usePolling = @json($usePolling ?? false);
+const initialQueueVersion = @json($queueVersion ?? null);
+const initialAntrians = @json($antrians ?? []);
+const initialCalled = @json($called ?? null);
+let lastQueueVersion = null;
 
 function openPopup(data) {
     currentPopupData = data;
@@ -147,7 +144,11 @@ window.addEventListener('afterprint', function(){
     closePopup();
 });
 
-function updateGuestRealtime(payload) {
+function updateGuestRealtime(payload, force = false) {
+    if (!force && payload && payload.version && payload.version === lastQueueVersion) {
+        return;
+    }
+
     const called = payload && payload.called ? payload.called : null;
     const antrians = payload && Array.isArray(payload.antrians) ? payload.antrians : [];
     const waitingCount = antrians.filter((item) => item.status === 'menunggu').length;
@@ -167,6 +168,10 @@ function updateGuestRealtime(payload) {
     if (waitingCountEl) {
         waitingCountEl.textContent = String(waitingCount);
     }
+
+    if (payload && payload.version) {
+        lastQueueVersion = payload.version;
+    }
 }
 
 function connectGuestSSE() {
@@ -183,6 +188,25 @@ function connectGuestSSE() {
             console.warn('Parse SSE guest gagal', err);
         }
     });
+    guestAntrianSource.onopen = function() { console.info('SSE guest: connection opened'); };
+    guestAntrianSource.onerror = function(e) { console.warn('SSE guest: connection error', e); };
+}
+
+async function fetchQueueSnapshot() {
+    try {
+        const res = await fetch("{{ route('antrian.snapshot') }}", { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return;
+
+        const payload = await res.json();
+        updateGuestRealtime(payload);
+    } catch (err) {
+        console.warn('Polling guest gagal', err);
+    }
+}
+
+function connectPolling() {
+    fetchQueueSnapshot();
+    setInterval(fetchQueueSnapshot, 3000);
 }
 
 document.getElementById('formAntrian').addEventListener('submit', async function(e){
@@ -212,7 +236,13 @@ document.getElementById('formAntrian').addEventListener('submit', async function
     }
 });
 
-connectGuestSSE();
+updateGuestRealtime({ antrians: initialAntrians, called: initialCalled, version: initialQueueVersion }, true);
+
+if (usePolling) {
+    connectPolling();
+} else {
+    connectGuestSSE();
+}
 window.addEventListener('beforeunload', function(){
     if (guestAntrianSource) {
         guestAntrianSource.close();
